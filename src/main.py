@@ -13,6 +13,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 
+
 class DuckBot(discord.Client):
     def __init__(self):
         super().__init__(intents=intents)
@@ -28,12 +29,25 @@ class DuckBot(discord.Client):
             self.added = True
         print(f"Say hi to {self.user}!")
 
+
 client = DuckBot()
 tree = discord.app_commands.CommandTree(client)
+
 
 @tree.command(description='Pong!', guild=discord.Object(GUILD_ID))
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message('Pong!')
+
+
+@tree.command(description='View useful information about using the bot.', guild=discord.Object(GUILD_ID))
+async def help(interaction: discord.Interaction):
+    commands = list(tree.get_commands(guild=discord.Object(GUILD_ID)))
+    embed = discord.Embed(
+        title="DuckBot", description="DuckBot is the CS Club's Discord Bot, created by the CS Club Open Source Team.", color=discord.Color.yellow())
+    for command in commands:
+        embed.add_field(name=f"/{command.name}",
+                        value=command.description, inline=False)
+    await interaction.response.send_message(embed=embed)
 
 # Add the token of bot
 client.run(BOT_TOKEN)
