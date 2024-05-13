@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "duckbot"
+version = "0.1.0"
+description = "DuckBot is the CS Club's Discord Bot, created by the CS Club Open Source Team."
+authors = ["CS Club Open Source Team <"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+"discord.py" = "2.3.2"
+python-dotenv = "1.0.0"
+black = "^24.4.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
