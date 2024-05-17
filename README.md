@@ -1,6 +1,6 @@
 # DuckBot
 
-DuckBot is a Discord bot written in Python using the discord.py library for the CS Club's Discord Server. It provides various commands and functionalities to enhance your Discord server experience.
+DuckBot is a Discord bot written in Python using the discord.py library for the CS Club's Discord Server. It provides various commands and functionality to enhance your Discord server experience.
 
 ## Getting Started
 
@@ -8,29 +8,34 @@ To get started, please follow these steps:
 
 1. Install Poetry if not already installed:
 
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
-```
+    Linux, macOS, Windows (WSL)
+    ```bash
+    curl -sSL https://install.python-poetry.org | python3 -
+    ```
+    Windows (Powershell)
+    ```bash
+    (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+    ```
 
 2. Install the dependencies.
 
-```bash
-poetry install
-```
+    ```bash
+    poetry install
+    ```
 
 3. Copy `.env.example` to a new file `.env` and set required environment variables.
 
 4. Navigate to the src directory
 
-```bash
-cd src
-```
+    ```bash
+    cd src
+    ```
 
 5. Run the bot.
 
-```bash
-poetry run python main.py
-```
+    ```bash
+    poetry run python main.py
+    ```
 
 ## Contributing
 
