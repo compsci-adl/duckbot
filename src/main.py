@@ -55,24 +55,21 @@ async def help(interaction: discord.Interaction):
         if isinstance(command, discord.app_commands.Group):
             # Add the group name
             embed.add_field(
-                name=f"/{command.name}",
-                value=f"{command.description}",
-                inline=False
+                name=f"/{command.name}", value=f"{command.description}", inline=False
             )
             # Add each subcommand in the group
             for subcommand in command.commands:
                 embed.add_field(
                     name=f"/{command.name} {subcommand.name}",
                     value=subcommand.description,
-                    inline=True
+                    inline=True,
                 )
         else:
             embed.add_field(
-                name=f"/{command.name}",
-                value=command.description,
-                inline=False
+                name=f"/{command.name}", value=command.description, inline=False
             )
     await interaction.response.send_message(embed=embed)
+
 
 # Add command groups to tree
 tree.add_command(hi_group, guild=discord.Object(GUILD_ID))
