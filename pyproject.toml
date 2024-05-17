@@ -2,7 +2,7 @@
 name = "duckbot"
 version = "0.1.0"
 description = "DuckBot is the CS Club's Discord Bot, created by the CS Club Open Source Team."
-authors = ["CS Club Open Source Team <"]
+authors = ["CS Club Open Source Team <dev@csclub.org.au>"]
 license = "MIT"
 readme = "README.md"
 
