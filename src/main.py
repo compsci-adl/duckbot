@@ -1,7 +1,8 @@
 import os
 import importlib
 import pkgutil
-from discord import Intents, Client, app_commands, Object, Interaction, Embed, Color
+from discord import Intents, app_commands, Object, Interaction, Embed, Message, Color
+from discord.ext import commands
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -16,10 +17,9 @@ intents = Intents.default()
 intents.message_content = True
 
 
-class DuckBot(Client):
+class DuckBot(commands.Bot):
     def __init__(self):
-        super().__init__(intents=intents)
-        self.tree = app_commands.CommandTree(self)
+        super().__init__(command_prefix="", intents=intents)
         self.synced = False  # Make sure that the command tree will be synced only once
 
     async def setup_hook(self):
@@ -77,6 +77,10 @@ async def help(interaction: Interaction):
             )
     await interaction.response.send_message(embed=embed)
 
+# Ignore non-slash commands
+@client.event
+async def on_message(message: Message):
+    pass
 
 # Add the token of bot
 client.run(BOT_TOKEN)
