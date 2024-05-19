@@ -77,10 +77,12 @@ async def help(interaction: Interaction):
             )
     await interaction.response.send_message(embed=embed)
 
+
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
     pass
+
 
 # Add the token of bot
 client.run(BOT_TOKEN)
