@@ -1,17 +1,18 @@
-import discord
-
-hi_group = discord.app_commands.Group(
-    name="hi",
-    description="Commands to greet users.",
-)
+from discord import app_commands, Interaction
 
 
-@hi_group.command(name="there", description="Say hi.")
-async def there(interaction: discord.Interaction):
-    await interaction.response.send_message("Hi there!")
+class HiGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="hi", description="Commands to greet users")
+
+    @app_commands.command(name="me", description="Say hi to you.")
+    async def me(self, interaction: Interaction):
+        user = interaction.user
+        await interaction.response.send_message(f"Hi {user.mention}!")
+
+    @app_commands.command(name="there", description="Say hi.")
+    async def there(self, interaction: Interaction):
+        await interaction.response.send_message("Hi there!")
 
 
-@hi_group.command(name="me", description="Say hi to you.")
-async def say_hi(interaction: discord.Interaction):
-    user = interaction.user
-    await interaction.response.send_message(f"Hi {user.mention}!")
+hi_group = HiGroup()
