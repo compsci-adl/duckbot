@@ -6,17 +6,16 @@ WORKDIR /app
 # Install dependencies
 COPY pyproject.toml poetry.lock ./
 
-RUN pip install --upgrade pip \
+RUN --mount=type=secret,id=GUILD_ID,target=/run/secrets/GUILD_ID \
+    --mount=type=secret,id=BOT_TOKEN,target=/run/secrets/BOT_TOKEN \
+    GUILD_ID=$(cat /run/secrets/GUILD_ID) \
+    BOT_TOKEN=$(cat /run/secrets/BOT_TOKEN) \
     && pip install poetry \
     && poetry config virtualenvs.create false \
     && poetry install --no-dev
 
 # Copy the rest of the application code
 COPY . .
-
-# Environment variables
-ENV GUILD_ID=GUILD_ID
-ENV BOT_TOKEN=BOT_TOKEN
 
 # Run the bot
 CMD ["poetry", "run", "python", "src/main.py"]

@@ -3,7 +3,7 @@ services:
     image: duckbot:latest
     container_name: duckbot
     env_file:
-      - .env.local
+      - .env
     environment:
       - PUID=1000
       - PGID=1000
