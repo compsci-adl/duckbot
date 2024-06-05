@@ -2,7 +2,7 @@ name: Production
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-aws]
 
 env:
   AWS_REGION: ap-southeast-2
@@ -43,7 +43,7 @@ jobs:
             --secret id=GUILD_ID \
             --secret id=BOT_TOKEN \
             --platform=linux/arm64 --file=Dockerfile -t duckbot .
-          docker image save website | gzip > duckbot.tar.gz
+          docker image save duckbot | gzip > duckbot.tar.gz
 
       - name: Copy image and compose file to S3
         run: |
@@ -64,7 +64,7 @@ jobs:
         run: |
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
-            cd ~/website
+            cd ~/duckbot
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/duckbot.tar.gz .
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/docker-compose.yml .
             docker load -i duckbot.tar.gz
