@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Retrieve guild ID and bot token from environment variables
-GUILD_ID = os.getenv("GUILD_ID")
+GUILD_ID = int(os.getenv("GUILD_ID"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Load the permissions the bot has been granted in the previous configuration
