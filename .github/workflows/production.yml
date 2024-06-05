@@ -64,5 +64,5 @@ jobs:
             echo GUILD_ID=${GUILD_ID} > .env
             echo BOT_TOKEN=${BOT_TOKEN} >> .env
             docker load -i duckbot.tar.gz
-            docker compose up -d --env-file .env
+            docker-compose up -d
           '
