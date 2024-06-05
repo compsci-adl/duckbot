@@ -31,17 +31,9 @@ jobs:
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # - name: Install arm64 support for Docker
-      #   run: docker run --privileged --rm tonistiigi/binfmt --install arm64
-
       - name: Build Docker container
-        env:
-          GUILD_ID: ${{ secrets.GUILD_ID }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           docker buildx build \
-            --secret id=GUILD_ID \
-            --secret id=BOT_TOKEN \
             --platform=linux/arm64 --file=Dockerfile -t duckbot .
           docker image save duckbot | gzip > duckbot.tar.gz
 
@@ -61,13 +53,16 @@ jobs:
           KEY: ${{ secrets.SSH_EC2_KEY }}
           HOSTNAME: ${{ secrets.SSH_EC2_HOSTNAME }}
           USER: ${{ secrets.SSH_EC2_USER }}
+          GUILD_ID: ${{ secrets.GUILD_ID }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
             cd ~/duckbot
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/duckbot.tar.gz .
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/docker-compose.yml .
+            echo GUILD_ID=${GUILD_ID} > .env
+            echo BOT_TOKEN=${BOT_TOKEN} >> .env
             docker load -i duckbot.tar.gz
-            docker compose up -d
-            docker restart duckbot
+            docker compose up -d --env-file .env
           '
