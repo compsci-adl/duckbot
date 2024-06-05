@@ -10,7 +10,6 @@ RUN --mount=type=secret,id=GUILD_ID,target=/run/secrets/GUILD_ID \
     --mount=type=secret,id=BOT_TOKEN,target=/run/secrets/BOT_TOKEN \
     GUILD_ID=$(cat /run/secrets/GUILD_ID) \
     BOT_TOKEN=$(cat /run/secrets/BOT_TOKEN) \
-    && echo "Guild ID: $GUILD_ID" \
     && pip install poetry \
     && poetry config virtualenvs.create false \
     && poetry install --no-dev
