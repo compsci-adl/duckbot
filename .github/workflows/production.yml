@@ -36,23 +36,19 @@ jobs:
 
       - name: Build Docker container
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          REDIS_URI: ${{ secrets.REDIS_URI }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_DRIVE_LINK: ${{ secrets.NEXT_PUBLIC_DRIVE_LINK }}
+          GUILD_ID: ${{ secrets.GUILD_ID }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           docker buildx build \
-            --secret id=DATABASE_URL \
-            --secret id=REDIS_URI \
-            --secret id=NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
-            --secret id=NEXT_PUBLIC_DRIVE_LINK \
-            --platform=linux/arm64 --file=Dockerfile -t csclub-website .
-          docker image save website | gzip > csclub-website.tar.gz
+            --secret id=GUILD_ID \
+            --secret id=BOT_TOKEN \
+            --platform=linux/arm64 --file=Dockerfile -t duckbot .
+          docker image save website | gzip > duckbot.tar.gz
 
       - name: Copy image and compose file to S3
         run: |
-          aws s3 cp ./csclub-website.tar.gz s3://${{ secrets.AWS_S3_BUCKET }}/website/
-          aws s3 cp ./docker-compose.yml s3://${{ secrets.AWS_S3_BUCKET }}/website/
+          aws s3 cp ./duckbot.tar.gz s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/
+          aws s3 cp ./docker-compose.yml s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/
 
   deploy:
     needs: build
@@ -69,9 +65,9 @@ jobs:
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
             cd ~/website
-            aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/website/csclub-website.tar.gz .
-            aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/website/docker-compose.yml .
-            docker load -i csclub-website.tar.gz
+            aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/duckbot.tar.gz .
+            aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/docker-compose.yml .
+            docker load -i duckbot.tar.gz
             docker compose up -d
-            docker restart csclub-website
+            docker restart duckbot
           '

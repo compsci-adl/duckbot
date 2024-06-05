@@ -20,14 +20,10 @@ jobs:
 
       - name: Build Docker container
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          REDIS_URI: ${{ secrets.REDIS_URI }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_DRIVE_LINK: ${{ secrets.NEXT_PUBLIC_DRIVE_LINK }}
+          GUILD_ID: ${{ secrets.GUILD_ID }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           docker buildx build \
-            --secret id=DATABASE_URL \
-            --secret id=REDIS_URI \
-            --secret id=NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY \
-            --secret id=NEXT_PUBLIC_DRIVE_LINK \
-            --file=Dockerfile -t csclub-website .
+            --secret id=GUILD_ID \
+            --secret id=BOT_TOKEN \
+            --file=Dockerfile -t duckbot .
