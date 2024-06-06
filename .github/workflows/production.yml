@@ -31,19 +31,9 @@ jobs:
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Check environment variables
-        run: |
-          if [ -z "${{ secrets.GUILD_ID }}" ]; then echo "GUILD_ID is null"; else echo "GUILD_ID is set"; fi
-          if [ -z "${{ secrets.BOT_TOKEN }}" ]; then echo "BOT_TOKEN is null"; else echo "BOT_TOKEN is set"; fi
-
       - name: Build Docker container
-        env:
-          GUILD_ID: ${{ secrets.GUILD_ID }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           docker buildx build \
-            --secret id=GUILD_ID \
-            --secret id=BOT_TOKEN \
             --platform=linux/arm64 --file=Dockerfile -t duckbot .
           docker image save duckbot | gzip > duckbot.tar.gz
 
@@ -71,8 +61,8 @@ jobs:
             cd ~/duckbot
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/duckbot.tar.gz .
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/docker-compose.yml .
-            echo GUILD_ID=${GUILD_ID} > .env
-            echo BOT_TOKEN=${BOT_TOKEN} >> .env
+            echo GUILD_ID=${{ secrets.GUILD_ID }} > .env
+            echo BOT_TOKEN=${{ secrets.BOT_TOKEN }} >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '
