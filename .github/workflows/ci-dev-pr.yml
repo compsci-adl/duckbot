@@ -13,17 +13,11 @@ jobs:
     needs: lint-format
     name: Build
     runs-on: ubuntu-latest
-    environment: Development
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Build Docker container
-        env:
-          GUILD_ID: ${{ secrets.GUILD_ID }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: |
           docker buildx build \
-            --secret id=GUILD_ID \
-            --secret id=BOT_TOKEN \
             --file=Dockerfile -t duckbot .
