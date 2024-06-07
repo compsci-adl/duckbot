@@ -3,14 +3,10 @@ import importlib
 import pkgutil
 from discord import Intents, app_commands, Object, Interaction, Embed, Message, Color
 from discord.ext import commands
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Retrieve guild ID and bot token from environment variables
-GUILD_ID = os.getenv("GUILD_ID")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+GUILD_ID = int(os.environ["GUILD_ID"])
+BOT_TOKEN = os.environ["BOT_TOKEN"]
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()

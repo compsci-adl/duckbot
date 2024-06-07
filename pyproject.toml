@@ -9,10 +9,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 "discord.py" = "2.3.2"
-python-dotenv = "1.0.0"
 black = "^24.4.2"
+poetry-dotenv-plugin = "^0.2.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-

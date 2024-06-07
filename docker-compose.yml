@@ -1,0 +1,15 @@
+services:
+  duckbot:
+    image: duckbot:latest
+    container_name: duckbot
+    env_file:
+      - .env
+    environment:
+      - PUID=1000
+      - PGID=1000
+    networks:
+      - csclub
+
+networks:
+  csclub:
+    external: true

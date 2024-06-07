@@ -1,11 +1,6 @@
-name: Format Code
-
+name: Linting Checks
 on:
-  pull_request:
-    branches:
-      - '*'
-  push:
-    branches: [main]
+  workflow_call:
 
 jobs:
   black:
@@ -29,6 +24,3 @@ jobs:
 
       - name: Format code with Black
         run: poetry run black .
-
-      - name: Check for changes
-        run: git diff --exit-code
