@@ -33,7 +33,6 @@ async def handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type):
 
     skullboard_channel = client.get_channel(SKULLBOARD_CHANNEL_ID)
     if not skullboard_channel:
-        print(f"Skullboard channel not found with ID {SKULLBOARD_CHANNEL_ID}. Message could not be sent.")
         return
     
     emoji = "💀"
@@ -54,10 +53,7 @@ async def handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type):
         current_count = max(0, current_count - 1)
 
     message_map[message_id_str] = (skullboard_message_id, current_count)
-    if current_count >= REQUIRED_REACTIONS:
-        await update_or_send_skullboard_message(skullboard_channel, message, current_count, emoji)
-    else:
-        await delete_skullboard_message(skullboard_channel, message)
+    await update_or_send_skullboard_message(skullboard_channel, message, current_count, emoji)
 
     # Save the updated message_map to the JSON file after each modification
     save_data()
@@ -67,17 +63,9 @@ async def update_or_send_skullboard_message(channel, message, current_count, emo
     skullboard_message_id, _ = message_map.get(str(message.id), (None, 0))
 
     if skullboard_message_id:
-        await update_skullboard_message(channel, message, current_count, emoji, skullboard_message_id)
+        await edit_or_send_skullboard_message(channel, message, current_count, emoji, send=False, skullboard_message_id=skullboard_message_id)
     else:
-        await send_skullboard_message(channel, message, current_count, emoji)
-
-# Function to send skullboard message
-async def send_skullboard_message(channel, message, current_count, emoji):
-    await edit_or_send_skullboard_message(channel, message, current_count, emoji, send=True)
-
-# Function to update skullboard message
-async def update_skullboard_message(channel, message, current_count, emoji, skullboard_message_id):
-    await edit_or_send_skullboard_message(channel, message, current_count, emoji, send=False, skullboard_message_id=skullboard_message_id)
+        await edit_or_send_skullboard_message(channel, message, current_count, emoji, send=True)
 
 # Function to edit or send skullboard message
 async def edit_or_send_skullboard_message(channel, message, current_count, emoji, send=False, skullboard_message_id=None):
@@ -102,20 +90,6 @@ async def edit_or_send_skullboard_message(channel, message, current_count, emoji
     else:
         skullboard_message = await channel.fetch_message(skullboard_message_id)
         await skullboard_message.edit(embed=embed)
-
-    # Save the updated message_map to the JSON file after each modification
-    save_data()
-
-# Function to delete skullboard message
-async def delete_skullboard_message(channel, message):
-    # Delete the Skullboard message
-    message_id_str = str(message.id)
-    if message_id_str in message_map:
-        skullboard_message_id, _ = message_map[message_id_str]
-        if skullboard_message_id:
-            skullboard_message = await channel.fetch_message(skullboard_message_id)
-            await skullboard_message.delete()
-            del message_map[message_id_str]
 
     # Save the updated message_map to the JSON file after each modification
     save_data()

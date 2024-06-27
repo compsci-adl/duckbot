@@ -91,7 +91,6 @@ async def on_message(message: Message):
 # Register the reaction handling
 @client.event
 async def on_raw_reaction_add(payload: RawReactionActionEvent):
-    print("Reaction added")
     if payload.emoji.name == "💀":
         channel = client.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
@@ -100,7 +99,6 @@ async def on_raw_reaction_add(payload: RawReactionActionEvent):
 
 @client.event
 async def on_raw_reaction_remove(payload: RawReactionActionEvent):
-    print("Reaction removed")
     if payload.emoji.name == "💀":
         channel = client.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
