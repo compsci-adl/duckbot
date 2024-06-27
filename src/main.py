@@ -1,17 +1,24 @@
 import os
+from dotenv import load_dotenv
 import importlib
 import pkgutil
-from discord import Intents, app_commands, Object, Interaction, Embed, Message, Color
+from discord import Intents, app_commands, Object, Interaction, Embed, Color, Message, Reaction, User
 from discord.ext import commands
+import commands.skullboard as skullboard
 
-# Retrieve guild ID and bot token from environment variables
+# Load environment variables from .env file
+load_dotenv()
+
+# Retrieve environment variables
 GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
+SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
 intents.message_content = True
-
+intents.reactions = True
+intents.members = True
 
 class DuckBot(commands.Bot):
     def __init__(self):
@@ -78,6 +85,17 @@ async def help(interaction: Interaction):
 @client.event
 async def on_message(message: Message):
     pass
+
+# Register the reaction handling
+@client.event
+async def on_reaction_add(reaction: Reaction, user: User):
+    type = "ADD"
+    await skullboard.handle_skullboard(client, reaction, SKULLBOARD_CHANNEL_ID, type)
+
+@client.event
+async def on_reaction_remove(reaction: Reaction, user: User):
+    type = "REMOVE"
+    await skullboard.handle_skullboard(client, reaction, SKULLBOARD_CHANNEL_ID, type)
 
 
 # Add the token of bot

@@ -5,12 +5,14 @@ description = "DuckBot is the CS Club's Discord Bot, created by the CS Club Open
 authors = ["CS Club Open Source Team <dev@csclub.org.au>"]
 license = "MIT"
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
 "discord.py" = "2.3.2"
 black = "^24.4.2"
-poetry-dotenv-plugin = "^0.2.0"
+python-dotenv = "^1.0.1"
+pytz = "^2024.1"
 
 [build-system]
 requires = ["poetry-core"]
