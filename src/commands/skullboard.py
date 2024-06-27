@@ -1,10 +1,15 @@
 import os
 import json
 from discord import Embed
+from dotenv import load_dotenv
 from .utils.time import get_adelaide_time
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Global variable to store the path to the JSON file
-DATA_FILE = 'skullboard_data.json'
+DATA_FILE = os.getenv('DATA_FILE')
+REQUIRED_REACTIONS = int(os.getenv('REQUIRED_REACTIONS'))
 
 # Initialise message_map
 message_map = {}
@@ -49,7 +54,7 @@ async def handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type):
         current_count = max(0, current_count - 1)
 
     message_map[message_id_str] = (skullboard_message_id, current_count)
-    if current_count > 0:
+    if current_count >= REQUIRED_REACTIONS:
         await update_or_send_skullboard_message(skullboard_channel, message, current_count, emoji)
     else:
         await delete_skullboard_message(skullboard_channel, message)
