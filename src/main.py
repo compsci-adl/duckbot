@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import importlib
 import pkgutil
-from discord import Intents, app_commands, Object, Interaction, Embed, Color, Message, Reaction, User
+from discord import Intents, app_commands, Object, Interaction, Embed, Color, Message, RawReactionActionEvent
 from discord.ext import commands
 import commands.skullboard as skullboard
 
@@ -16,6 +16,8 @@ SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
+intents.guilds = True
+intents.messages = True
 intents.message_content = True
 intents.reactions = True
 intents.members = True
@@ -88,14 +90,22 @@ async def on_message(message: Message):
 
 # Register the reaction handling
 @client.event
-async def on_reaction_add(reaction: Reaction, user: User):
-    type = "ADD"
-    await skullboard.handle_skullboard(client, reaction, SKULLBOARD_CHANNEL_ID, type)
+async def on_raw_reaction_add(payload: RawReactionActionEvent):
+    print("Reaction added")
+    if payload.emoji.name == "💀":
+        channel = client.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        type = "ADD"
+        await skullboard.handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type)
 
 @client.event
-async def on_reaction_remove(reaction: Reaction, user: User):
-    type = "REMOVE"
-    await skullboard.handle_skullboard(client, reaction, SKULLBOARD_CHANNEL_ID, type)
+async def on_raw_reaction_remove(payload: RawReactionActionEvent):
+    print("Reaction removed")
+    if payload.emoji.name == "💀":
+        channel = client.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        type = "REMOVE"
+        await skullboard.handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type)
 
 
 # Add the token of bot
