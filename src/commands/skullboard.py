@@ -2,7 +2,6 @@ import os
 import json
 from discord import Embed
 from dotenv import load_dotenv
-from .utils.time import get_adelaide_time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -71,7 +70,7 @@ async def update_or_send_skullboard_message(channel, message, current_count, emo
 async def edit_or_send_skullboard_message(channel, message, current_count, emoji, send=False, skullboard_message_id=None):
     # Format the message details
     channel_name = message.channel.name
-    adelaide_time = get_adelaide_time()
+    message_time = message.created_at
     mention = message.author.mention
     message_content = message.content
     message_link = message.jump_url
@@ -80,7 +79,7 @@ async def edit_or_send_skullboard_message(channel, message, current_count, emoji
     embed = Embed(
         title=f"{current_count} {emoji} | #{channel_name}",
         description=f"{mention}\n\n{message_content}\n\n[Click to go to message!]({message_link})",
-        timestamp=adelaide_time
+        timestamp=message_time
     )
 
     # Determine if sending or editing the message
