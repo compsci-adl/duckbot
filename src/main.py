@@ -64,17 +64,21 @@ class DuckBot(commands.Bot):
         if payload.emoji.name == "💀":
             channel = self.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
-            await self.skullboard_manager.handle_skullboard(
-                message, SKULLBOARD_CHANNEL_ID, "ADD"
-            )
+            # Ignore reactions to own messages
+            if message.author.id != self.user.id:  
+                await self.skullboard_manager.handle_skullboard(
+                    message, SKULLBOARD_CHANNEL_ID, "ADD"
+                )
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
         if payload.emoji.name == "💀":
             channel = self.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
-            await self.skullboard_manager.handle_skullboard(
-                message, SKULLBOARD_CHANNEL_ID, "REMOVE"
-            )
+            # Ignore reactions to own messages
+            if message.author.id != self.user.id:
+                await self.skullboard_manager.handle_skullboard(
+                    message, SKULLBOARD_CHANNEL_ID, "REMOVE"
+                )
 
 
 client = DuckBot()
