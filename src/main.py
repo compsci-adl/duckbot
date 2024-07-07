@@ -2,9 +2,17 @@ import os
 from dotenv import load_dotenv
 import importlib
 import pkgutil
-from discord import Intents, app_commands, Object, Interaction, Embed, Color, Message, RawReactionActionEvent
+from discord import (
+    Intents,
+    app_commands,
+    Object,
+    Interaction,
+    Embed,
+    Color,
+    RawReactionActionEvent,
+)
 from discord.ext import commands
-import commands.skullboard as skullboard
+from commands import skullboard
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,10 +30,14 @@ intents.message_content = True
 intents.reactions = True
 intents.members = True
 
+
 class DuckBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="", intents=intents)
         self.synced = False  # Make sure that the command tree will be synced only once
+        self.skullboard_manager = skullboard.SkullboardManager(
+            self
+        )  # Initialise SkullboardManager
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -43,6 +55,27 @@ class DuckBot(commands.Bot):
     async def on_ready(self):
         print(f"Say hi to {self.user}!")
 
+    # Override on_message method with correct parameters
+    async def on_message(self, message):
+        pass
+
+    # Register the reaction handling
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        if payload.emoji.name == "💀":
+            channel = self.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            await self.skullboard_manager.handle_skullboard(
+                message, SKULLBOARD_CHANNEL_ID, "ADD"
+            )
+
+    async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
+        if payload.emoji.name == "💀":
+            channel = self.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            await self.skullboard_manager.handle_skullboard(
+                message, SKULLBOARD_CHANNEL_ID, "REMOVE"
+            )
+
 
 client = DuckBot()
 
@@ -57,13 +90,13 @@ async def ping(interaction: Interaction):
     guild=Object(GUILD_ID),
 )
 async def help(interaction: Interaction):
-    commands = list(client.tree.get_commands(guild=Object(GUILD_ID)))
+    commands_list = list(client.tree.get_commands(guild=Object(GUILD_ID)))
     embed = Embed(
         title="DuckBot",
         description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
         color=Color.yellow(),
     )
-    for command in commands:
+    for command in commands_list:
         if isinstance(command, app_commands.Group):
             # Add the group name
             embed.add_field(
@@ -81,29 +114,6 @@ async def help(interaction: Interaction):
                 name=f"/{command.name}", value=command.description, inline=False
             )
     await interaction.response.send_message(embed=embed)
-
-
-# Ignore non-slash commands
-@client.event
-async def on_message(message: Message):
-    pass
-
-# Register the reaction handling
-@client.event
-async def on_raw_reaction_add(payload: RawReactionActionEvent):
-    if payload.emoji.name == "💀":
-        channel = client.get_channel(payload.channel_id)
-        message = await channel.fetch_message(payload.message_id)
-        type = "ADD"
-        await skullboard.handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type)
-
-@client.event
-async def on_raw_reaction_remove(payload: RawReactionActionEvent):
-    if payload.emoji.name == "💀":
-        channel = client.get_channel(payload.channel_id)
-        message = await channel.fetch_message(payload.message_id)
-        type = "REMOVE"
-        await skullboard.handle_skullboard(client, message, SKULLBOARD_CHANNEL_ID, type)
 
 
 # Add the token of bot
