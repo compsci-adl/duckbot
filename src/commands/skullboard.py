@@ -49,7 +49,8 @@ class SkullboardManager:
         elif value == "REMOVE":
             current_count = max(0, current_count - 1)
 
-        self.message_map[message_id_str] = (skullboard_message_id, current_count)
+        self.message_map[message_id_str] = (
+            skullboard_message_id, current_count)
         await self.update_or_send_skullboard_message(
             skullboard_channel, message, current_count, emoji
         )
@@ -59,7 +60,8 @@ class SkullboardManager:
     async def update_or_send_skullboard_message(
         self, channel, message, current_count, emoji
     ):
-        skullboard_message_id, _ = self.message_map.get(str(message.id), (None, 0))
+        skullboard_message_id, _ = self.message_map.get(
+            str(message.id), (None, 0))
 
         if skullboard_message_id:
             await self.edit_or_send_skullboard_message(
@@ -85,28 +87,35 @@ class SkullboardManager:
         send=False,
         skullboard_message_id=None,
     ):
-        # Format the message details
-        channel_name = message.channel.name
-        message_time = message.created_at
-        mention = message.author.mention
-        message_content = message.content
-        message_link = message.jump_url
+        # Fetch user's nickname and avatar url
+        guild = self.client.get_guild(message.guild.id)
+        member = guild.get_member(message.author.id)
+        user_nickname = member.nick if member.nick else message.author.name
+        user_avatar_url = message.author.avatar
+
+        # Constructing the message content
+        message_jump_url = message.jump_url
+        message_content = f"{emoji} {
+            current_count} | {message_jump_url}"
 
         # Constructing the embed
         embed = Embed(
-            title=f"{current_count} {emoji} | #{channel_name}",
-            description=f"{mention}\n\n{message_content}\n\n[Click to go to message!]({
-                message_link})",
-            timestamp=message_time,
+            description=(
+                f"{message.content}\n\n"
+            ),
+            timestamp=message.created_at,
         )
+        # Set user nickname and thumbnail
+        embed.set_author(name=user_nickname, icon_url=user_avatar_url)
 
         # Determine if sending or editing the message
         if send:
-            skullboard_message = await channel.send(embed=embed)
-            self.message_map[str(message.id)] = (skullboard_message.id, current_count)
+            skullboard_message = await channel.send(message_content, embed=embed)
+            self.message_map[str(message.id)] = (
+                skullboard_message.id, current_count)
         else:
             skullboard_message = await channel.fetch_message(skullboard_message_id)
-            await skullboard_message.edit(embed=embed)
+            await skullboard_message.edit(content=message_content, embed=embed)
 
         # Save the updated message_map to the JSON file after each modification
         self.save_data()
