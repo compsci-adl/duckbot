@@ -49,8 +49,7 @@ class SkullboardManager:
         elif value == "REMOVE":
             current_count = max(0, current_count - 1)
 
-        self.message_map[message_id_str] = (
-            skullboard_message_id, current_count)
+        self.message_map[message_id_str] = (skullboard_message_id, current_count)
         await self.update_or_send_skullboard_message(
             skullboard_channel, message, current_count, emoji
         )
@@ -60,8 +59,7 @@ class SkullboardManager:
     async def update_or_send_skullboard_message(
         self, channel, message, current_count, emoji
     ):
-        skullboard_message_id, _ = self.message_map.get(
-            str(message.id), (None, 0))
+        skullboard_message_id, _ = self.message_map.get(str(message.id), (None, 0))
 
         if skullboard_message_id:
             await self.edit_or_send_skullboard_message(
@@ -100,9 +98,7 @@ class SkullboardManager:
 
         # Constructing the embed
         embed = Embed(
-            description=(
-                f"{message.content}\n\n"
-            ),
+            description=(f"{message.content}\n\n"),
             timestamp=message.created_at,
         )
         # Set user nickname and thumbnail
@@ -111,8 +107,7 @@ class SkullboardManager:
         # Determine if sending or editing the message
         if send:
             skullboard_message = await channel.send(message_content, embed=embed)
-            self.message_map[str(message.id)] = (
-                skullboard_message.id, current_count)
+            self.message_map[str(message.id)] = (skullboard_message.id, current_count)
         else:
             skullboard_message = await channel.fetch_message(skullboard_message_id)
             await skullboard_message.edit(content=message_content, embed=embed)

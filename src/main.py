@@ -65,7 +65,7 @@ class DuckBot(commands.Bot):
             channel = self.get_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
             # Ignore reactions to own messages
-            if message.author.id != self.user.id:  
+            if message.author.id != self.user.id:
                 await self.skullboard_manager.handle_skullboard(
                     message, SKULLBOARD_CHANNEL_ID, "ADD"
                 )
