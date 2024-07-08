@@ -1,5 +1,5 @@
 import os
-from discord import Embed, Client
+from discord import Embed, Client, Color
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -88,6 +88,7 @@ class SkullboardManager:
         embed = Embed(
             description=f"{message.content}\n\n",
             timestamp=message.created_at,
+            colour=Color.from_rgb(204, 214, 221),
         )
         # Set user nickname and thumbnail
         embed.set_author(name=user_nickname, icon_url=user_avatar_url)
