@@ -17,7 +17,6 @@ from commands import skullboard
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve environment variables
 GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
@@ -67,7 +66,7 @@ class DuckBot(commands.Bot):
             # Ignore reactions to own messages
             if message.author.id != self.user.id:
                 await self.skullboard_manager.handle_skullboard(
-                    message, SKULLBOARD_CHANNEL_ID, "ADD"
+                    message, SKULLBOARD_CHANNEL_ID
                 )
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
@@ -77,7 +76,7 @@ class DuckBot(commands.Bot):
             # Ignore reactions to own messages
             if message.author.id != self.user.id:
                 await self.skullboard_manager.handle_skullboard(
-                    message, SKULLBOARD_CHANNEL_ID, "REMOVE"
+                    message, SKULLBOARD_CHANNEL_ID
                 )
 
 
