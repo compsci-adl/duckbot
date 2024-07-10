@@ -1,4 +1,6 @@
 import os
+import requests
+import re
 from discord import Embed, Client, Color
 from dotenv import load_dotenv
 
@@ -63,6 +65,19 @@ class SkullboardManager:
             skullboard_message = await channel.fetch_message(skullboard_message_id)
             await skullboard_message.delete()
 
+    @staticmethod
+    async def get_gif_url(view_url):
+        # Get the page content
+        page_content = requests.get(view_url).text
+
+        # Regex to find the URL on the media.tenor.com domain that ends with .gif
+        regex = r"(?i)\b((https?://media1[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
+
+        # Find and return the first match
+        match = re.findall(regex, page_content)
+
+        return match[0][0] if match else None
+
     # Function to edit or send skullboard message
     async def edit_or_send_skullboard_message(
         self,
@@ -77,12 +92,11 @@ class SkullboardManager:
         guild = self.client.get_guild(message.guild.id)
         member = guild.get_member(message.author.id)
         user_nickname = member.nick if member.nick else message.author.name
-        user_avatar_url = message.author.avatar
+        user_avatar_url = message.author.avatar.url
 
         # Constructing the message content
         message_jump_url = message.jump_url
-        message_content = f"{emoji} {
-            current_count} | {message_jump_url}"
+        message_content = f"{emoji} {current_count} | {message_jump_url}"
 
         # Constructing the embed
         embed = Embed(
@@ -90,8 +104,39 @@ class SkullboardManager:
             timestamp=message.created_at,
             colour=Color.from_rgb(204, 214, 221),
         )
+
+        if message.content.startswith("https://tenor.com/view/"):
+            # Constructing the embed
+            embed = Embed(
+                timestamp=message.created_at,
+                colour=Color.from_rgb(204, 214, 221),
+            )
+
+            # Find the URL of the gif
+            gif_url = await self.get_gif_url(message.content)
+
+            if gif_url:
+                embed.set_image(url=gif_url)
+            
         # Set user nickname and thumbnail
         embed.set_author(name=user_nickname, icon_url=user_avatar_url)
+
+        # Add images, stickers, and attachments
+        if message.stickers:
+            print(message.stickers[0].id)
+            print(message.stickers[0].format)
+
+            # Replace the pattern with just the format type
+            format_type = str(message.stickers[0].format).split('.', maxsplit=1)[-1]
+
+            sticker_id = message.stickers[0].id
+            sticker_url = f"https://media.discordapp.net/stickers/{
+                sticker_id}.{format_type}"
+            print(sticker_url)
+            embed.set_image(url=sticker_url)
+
+        if message.attachments:
+            embed.set_image(url=message.attachments[0].url)
 
         # Determine if sending or editing the message
         if send:
