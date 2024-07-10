@@ -3,6 +3,10 @@ import importlib
 import pkgutil
 from discord import Intents, app_commands, Object, Interaction, Embed, Message, Color
 from discord.ext import commands
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Retrieve guild ID and bot token from environment variables
 GUILD_ID = int(os.environ["GUILD_ID"])
