@@ -1,4 +1,6 @@
 [tool.poetry]
+
+package-mode = false
 name = "duckbot"
 version = "0.1.0"
 description = "DuckBot is the CS Club's Discord Bot, created by the CS Club Open Source Team."
