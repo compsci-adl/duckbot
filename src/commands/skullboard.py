@@ -123,16 +123,12 @@ class SkullboardManager:
 
         # Add images, stickers, and attachments
         if message.stickers:
-            print(message.stickers[0].id)
-            print(message.stickers[0].format)
-
             # Replace the pattern with just the format type
             format_type = str(message.stickers[0].format).split(".", maxsplit=1)[-1]
 
             sticker_id = message.stickers[0].id
             sticker_url = f"https://media.discordapp.net/stickers/{
                 sticker_id}.{format_type}"
-            print(sticker_url)
             embed.set_image(url=sticker_url)
 
         if message.attachments:

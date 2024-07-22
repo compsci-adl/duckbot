@@ -8,6 +8,7 @@ from discord import (
     Interaction,
     Embed,
     Color,
+    Message,
     RawReactionActionEvent,
 )
 from discord.ext import commands
@@ -17,6 +18,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Retrieve guild ID and bot token from environment variables
 GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
@@ -93,13 +95,13 @@ async def ping(interaction: Interaction):
     guild=Object(GUILD_ID),
 )
 async def help(interaction: Interaction):
-    commands_list = list(client.tree.get_commands(guild=Object(GUILD_ID)))
+    commands = list(client.tree.get_commands(guild=Object(GUILD_ID)))
     embed = Embed(
         title="DuckBot",
         description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
         color=Color.yellow(),
     )
-    for command in commands_list:
+    for command in commands:
         if isinstance(command, app_commands.Group):
             # Add the group name
             embed.add_field(
@@ -117,6 +119,12 @@ async def help(interaction: Interaction):
                 name=f"/{command.name}", value=command.description, inline=False
             )
     await interaction.response.send_message(embed=embed)
+
+
+# Ignore non-slash commands
+@client.event
+async def on_message(message: Message):
+    pass
 
 
 # Add the token of bot
