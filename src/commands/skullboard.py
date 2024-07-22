@@ -132,7 +132,11 @@ class SkullboardManager:
             embed.set_image(url=sticker_url)
 
         if message.attachments:
-            embed.set_image(url=message.attachments[0].url)
+            attachment = message.attachments[0]
+            if attachment.content_type.startswith("video"):
+                embed.add_field(name="", value=attachment.url)
+            else:
+                embed.set_image(url=attachment.url)
 
         # Determine if sending or editing the message
         if send:
