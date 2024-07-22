@@ -1,7 +1,7 @@
 from discord import app_commands, Interaction
 
 
-class FaqGroup(app_commands.Group):
+class FAQGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="faq", description="Answers to common questions")
 
@@ -24,4 +24,4 @@ class FaqGroup(app_commands.Group):
         await interaction.response.send_message(cpc_info)
 
 
-faq_group = FaqGroup()
+faq_group = FAQGroup()
