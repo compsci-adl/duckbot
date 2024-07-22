@@ -1,5 +1,4 @@
 import os
-from dotenv import load_dotenv
 import importlib
 import pkgutil
 from discord import (
@@ -13,6 +12,7 @@ from discord import (
 )
 from discord.ext import commands
 from commands import skullboard
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,7 +40,7 @@ class DuckBot(commands.Bot):
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
-        for _, module_name, _ in pkgutil.iter_modules(["commands"]):
+        for _, module_name, _ in pkgutil.iter_modules(["src/commands"]):
             module = importlib.import_module(f"commands.{module_name}")
             for attribute_name in dir(module):
                 attribute = getattr(module, attribute_name)
