@@ -117,7 +117,7 @@ class SkullboardManager:
 
             if gif_url:
                 embed.set_image(url=gif_url)
-            
+
         # Set user nickname and thumbnail
         embed.set_author(name=user_nickname, icon_url=user_avatar_url)
 
@@ -127,7 +127,7 @@ class SkullboardManager:
             print(message.stickers[0].format)
 
             # Replace the pattern with just the format type
-            format_type = str(message.stickers[0].format).split('.', maxsplit=1)[-1]
+            format_type = str(message.stickers[0].format).split(".", maxsplit=1)[-1]
 
             sticker_id = message.stickers[0].id
             sticker_url = f"https://media.discordapp.net/stickers/{
