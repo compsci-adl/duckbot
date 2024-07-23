@@ -52,20 +52,12 @@ jobs:
           KEY: ${{ secrets.SSH_EC2_KEY }}
           HOSTNAME: ${{ secrets.SSH_EC2_HOSTNAME }}
           USER: ${{ secrets.SSH_EC2_USER }}
-          GUILD_ID: ${{ secrets.GUILD_ID }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          SKULLBOARD_CHANNEL_ID: ${{ secrets.SKULLBOARD_CHANNEL_ID }}
-          REQUIRED_REACTIONS: ${{ secrets.REQUIRED_REACTIONS }}
         run: |
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
             cd ~/duckbot
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/duckbot.tar.gz .
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/docker-compose.yml .
-            echo GUILD_ID=${{ secrets.GUILD_ID }} > .env
-            echo BOT_TOKEN=${{ secrets.BOT_TOKEN }} >> .env
-            echo SKULLBOARD_CHANNEL_ID=${{ secrets.SKULLBOARD_CHANNEL_ID }} >> .env
-            echo REQUIRED_REACTIONS=${{ secrets.REQUIRED_REACTIONS }} >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '
