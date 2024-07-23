@@ -1,8 +1,10 @@
 import os
 import requests
 import re
+
 from discord import Embed, Client
 from dotenv import load_dotenv
+
 from constants.colours import LIGHT_GREY
 
 

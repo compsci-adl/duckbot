@@ -1,6 +1,7 @@
 import os
 import importlib
 import pkgutil
+
 from discord import (
     Intents,
     app_commands,
@@ -12,8 +13,9 @@ from discord import (
     RawReactionActionEvent,
 )
 from discord.ext import commands
-from commands import skullboard
 from dotenv import load_dotenv
+
+from commands import skullboard
 
 # Load environment variables from .env file
 load_dotenv()
