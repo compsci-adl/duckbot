@@ -1,9 +1,21 @@
 import os
 import importlib
 import pkgutil
-from discord import Intents, app_commands, Object, Interaction, Embed, Message, Color
+
+from discord import (
+    Intents,
+    app_commands,
+    Object,
+    Interaction,
+    Embed,
+    Color,
+    Message,
+    RawReactionActionEvent,
+)
 from discord.ext import commands
 from dotenv import load_dotenv
+
+from commands import skullboard
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,16 +23,24 @@ load_dotenv()
 # Retrieve guild ID and bot token from environment variables
 GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
+SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
+intents.guilds = True
+intents.messages = True
 intents.message_content = True
+intents.reactions = True
+intents.members = True
 
 
 class DuckBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="", intents=intents)
         self.synced = False  # Make sure that the command tree will be synced only once
+        self.skullboard_manager = skullboard.SkullboardManager(
+            self
+        )  # Initialise SkullboardManager
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -37,6 +57,31 @@ class DuckBot(commands.Bot):
 
     async def on_ready(self):
         print(f"Say hi to {self.user}!")
+
+    # Override on_message method with correct parameters
+    async def on_message(self, message):
+        pass
+
+    # Register the reaction handling
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        if payload.emoji.name == "💀":
+            channel = self.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            # Ignore reactions to own messages
+            if message.author.id != self.user.id:
+                await self.skullboard_manager.handle_skullboard(
+                    message, SKULLBOARD_CHANNEL_ID
+                )
+
+    async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
+        if payload.emoji.name == "💀":
+            channel = self.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+            # Ignore reactions to own messages
+            if message.author.id != self.user.id:
+                await self.skullboard_manager.handle_skullboard(
+                    message, SKULLBOARD_CHANNEL_ID
+                )
 
 
 client = DuckBot()
