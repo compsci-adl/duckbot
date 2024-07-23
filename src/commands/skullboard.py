@@ -1,28 +1,21 @@
 import os
 import requests
 import re
-from discord import Embed, Client, Color
+from discord import Embed, Client
 from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-REQUIRED_REACTIONS = int(os.getenv("REQUIRED_REACTIONS"))
+from constants.colours import LIGHT_GREY
 
 
 class SkullboardManager:
     def __init__(self, client: Client):
+        """Initialise SkullboardManager"""
+        load_dotenv()  # Load environment variables from .env file
         self.client = client
-        self.required_reactions = REQUIRED_REACTIONS
+        self.required_reactions = int(os.getenv("REQUIRED_REACTIONS"))
 
-    # Function to handle reactions and update/delete skullboard messages
-    async def handle_skullboard(self, message, skullboard_channel_id):
-        skullboard_channel = self.client.get_channel(skullboard_channel_id)
-        if not skullboard_channel:
-            return
-
-        emoji = "💀"
-        current_count = next(
+    async def get_reaction_count(self, message, emoji):
+        """Get count of a specific emoji reaction on a message"""
+        return next(
             (
                 reaction.count
                 for reaction in message.reactions
@@ -31,14 +24,23 @@ class SkullboardManager:
             0,
         )
 
+    async def handle_skullboard(self, message, skullboard_channel_id):
+        """Handle reactions and update/delete skullboard messages"""
+        skullboard_channel = self.client.get_channel(skullboard_channel_id)
+        if not skullboard_channel:
+            return
+
+        emoji = "💀"
+        current_count = await self.get_reaction_count(message, emoji)
+
         await self.update_or_send_skullboard_message(
             skullboard_channel, message, current_count, emoji
         )
 
-    # Function to update or send skullboard message
     async def update_or_send_skullboard_message(
         self, channel, message, current_count, emoji
     ):
+        """Update or send skullboard message"""
         skullboard_message_id = None
         message_jump_url = message.jump_url
 
@@ -67,6 +69,7 @@ class SkullboardManager:
 
     @staticmethod
     async def get_gif_url(view_url):
+        """Get URL of GIF from a Tenor view URL"""
         # Get the page content
         page_content = requests.get(view_url).text
 
@@ -78,7 +81,6 @@ class SkullboardManager:
 
         return match[0][0] if match else None
 
-    # Function to edit or send skullboard message
     async def edit_or_send_skullboard_message(
         self,
         channel,
@@ -88,6 +90,7 @@ class SkullboardManager:
         send=False,
         skullboard_message_id=None,
     ):
+        """Edit or send a skullboard message"""
         # Fetch user's nickname and avatar url
         guild = self.client.get_guild(message.guild.id)
         member = guild.get_member(message.author.id)
@@ -102,14 +105,14 @@ class SkullboardManager:
         embed = Embed(
             description=f"{message.content}\n\n",
             timestamp=message.created_at,
-            colour=Color.from_rgb(204, 214, 221),
+            colour=LIGHT_GREY,
         )
 
         if message.content.startswith("https://tenor.com/view/"):
             # Constructing the embed
             embed = Embed(
                 timestamp=message.created_at,
-                colour=Color.from_rgb(204, 214, 221),
+                colour=LIGHT_GREY,
             )
 
             # Find the URL of the gif
