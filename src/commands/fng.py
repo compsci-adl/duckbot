@@ -7,7 +7,7 @@ class FNGGroup(app_commands.Group):
     def __init__(self):
         super().__init__(
             name="fng",
-            description="Outputs the date of the next Friday Night Games with food",
+            description="Provides information about Friday Night Games (FNG)",
         )
 
     @app_commands.command(
@@ -38,6 +38,7 @@ class FNGGroup(app_commands.Group):
             await interaction.response.send_message(
                 "The next Friday Night Games with food will be next year. Thank you for being a valued member!"
             )
+            return
 
         # Determining if games night is on the same day as day of function call
         time_difference = date_stack[-1].date() - curr_date.date()
@@ -51,12 +52,14 @@ class FNGGroup(app_commands.Group):
                 await interaction.response.send_message(
                     f"The next Friday Night Games with food is on today in {time_difference_hours} hours at 5pm. Join us in the Duck Lounge!"
                 )
+            return
 
         # Determining if games night is on the next day of function call
         if time_difference.days < 2 and time_difference.days > 1:
             await interaction.response.send_message(
                 f"The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
             )
+            return
 
         # Determining whether date needs a st, nd, rd or rth
         date_num = date_stack[-1].strftime("%d")
