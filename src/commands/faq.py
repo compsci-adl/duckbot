@@ -37,7 +37,7 @@ class FNGGroup(app_commands.Group):
     @app_commands.command(
         name="about", description="Provides information about Friday Night Games (FNG)"
     )
-    async def fng(self, interaction: Interaction):
+    async def about(self, interaction: Interaction):
         fng_info = (
             "Friday Night Games (FNG) is a regular Computer Science Club event where the Duck Lounge (Located in EM110) hosts a weekly games night from 5PM where members commonly play amongst a Nintendo Switch and board games.\n"
             "Moreover, on the final Friday of each month within semester, we have free food for all members! Type ``/faq fng food`` to find out when the next FNG with food will be.\n\n"
