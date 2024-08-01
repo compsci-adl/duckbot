@@ -97,7 +97,7 @@ class SkullboardManager:
         guild = self.client.get_guild(message.guild.id)
         member = guild.get_member(message.author.id)
         user_nickname = member.nick if member.nick else message.author.name
-        user_avatar_url = message.author.avatar.url if message.author.avatar else ''
+        user_avatar_url = message.author.avatar.url if message.author.avatar else ""
 
         # Constructing the message content
         message_jump_url = message.jump_url
