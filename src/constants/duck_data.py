@@ -27,7 +27,7 @@ DUCK_FACTS = [
     "Ducks have a gland that produces oil to keep their feathers waterproof.",
     "Ducks are born precocial, meaning they can walk, swim and feed themselves shortly after hatching.",
     "Some ducks, like the ruddy duck, can lay large eggs relative to their body size.",
-    "Wild ducks typically live for 5-10 years."
+    "Wild ducks typically live for 5-10 years.",
 ]
 
 DUCK_JOKES = [
@@ -77,5 +77,5 @@ DUCK_JOKES = [
     "Why was the duck put in time-out? It was being too quacky.",
     "What's a duck's favorite car? A Volkswagen QuackBeetle.",
     "Why do ducks make good bankers? They have a lot of bills.",
-    "What’s a duck’s favorite holiday? Quack-o-ween."
+    "What’s a duck’s favorite holiday? Quack-o-ween.",
 ]

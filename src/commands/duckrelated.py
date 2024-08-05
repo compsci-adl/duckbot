@@ -12,7 +12,10 @@ load_dotenv()
 
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")
 TENOR_API_URL = "https://g.tenor.com/v2/search"
-DUCK_PIC_API_URL = "https://random-d.uk/api/v2/random?type=jpg" # Duck picture API by random-d.uk
+DUCK_PIC_API_URL = (
+    "https://random-d.uk/api/v2/random?type=jpg"  # Duck picture API by random-d.uk
+)
+
 
 class DuckCommands(app_commands.Group):
     def __init__(self):
@@ -25,10 +28,10 @@ class DuckCommands(app_commands.Group):
             params = {
                 "q": search_term,
                 "key": TENOR_API_KEY,
-                "limit": 30, # Fetch 30 results for a good random selection size
+                "limit": 30,  # Fetch 30 results for a good random selection size
                 "contentfilter": "high",
                 "media_filter": "minimal",
-                "ar_range": "standard"
+                "ar_range": "standard",
             }
             try:
                 async with session.get(TENOR_API_URL, params=params) as response:
@@ -56,7 +59,7 @@ class DuckCommands(app_commands.Group):
                         return None
                     data = await response.json()
                     # Extract and return the URL of the image
-                    return data.get('url')
+                    return data.get("url")
             except Exception as e:
                 print(f"Error fetching image: {str(e)}")
                 return None
@@ -73,7 +76,9 @@ class DuckCommands(app_commands.Group):
             embed.set_image(url=gif_url)
             await interaction.followup.send(embed=embed)
         else:
-            await interaction.followup.send("Sorry, I couldn't fetch a duck GIF right now.")
+            await interaction.followup.send(
+                "Sorry, I couldn't fetch a duck GIF right now."
+            )
 
     @app_commands.command(name="pic", description="Sends a random duck picture")
     async def duck_pic(self, interaction: Interaction):
@@ -85,7 +90,9 @@ class DuckCommands(app_commands.Group):
             embed.set_image(url=pic_url)
             await interaction.response.send_message(embed=embed)
         else:
-            await interaction.response.send_message("Sorry, I couldn't fetch a duck picture right now.")
+            await interaction.response.send_message(
+                "Sorry, I couldn't fetch a duck picture right now."
+            )
 
     @app_commands.command(name="fact", description="Sends a random duck fact")
     async def duck_fact(self, interaction: Interaction):
@@ -98,5 +105,6 @@ class DuckCommands(app_commands.Group):
         """Tell a random duck-related joke from the predefined list."""
         joke = random.choice(DUCK_JOKES)
         await interaction.response.send_message(f"{joke}")
+
 
 duck_commands = DuckCommands()
