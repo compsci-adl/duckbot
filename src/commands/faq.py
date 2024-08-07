@@ -15,8 +15,9 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }
 
+
 # Configure and initialize gemini LLM
-def init_gemini(data_csv_path : str, model_name : str):
+def init_gemini(data_csv_path: str, model_name: str):
 
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
@@ -24,20 +25,23 @@ def init_gemini(data_csv_path : str, model_name : str):
         "You are duckbot, the official discord bot for the Computer Science Club of the University of Adelaide. "
         "Your main purpose is to answer FAQs by users in the Discord channel in a respectful and helpful manner. "
         "Try to keep your answers similar to the examples provided below. Do not modify any links in the data. "
-        "Only respond to images if they are relevant to the question asked or your purpose. " 
-        "If someone asks a CS related question, answer it in a technical manner. " 
+        "Only respond to images if they are relevant to the question asked or your purpose. "
+        "If someone asks a CS related question, answer it in a technical manner. "
         "Don't be cringe. "
         "Consider the following examples for the FAQs: \n"
     )
 
     # Adding examples from the csv to the sys instruction
-    with open(data_csv_path, newline = '') as train_data:
-        reader = csv.reader(train_data, delimiter = ',')
+    with open(data_csv_path, newline="") as train_data:
+        reader = csv.reader(train_data, delimiter=",")
         for row in reader:
-            system_instruction = system_instruction + f"INPUT:{row[0]} ANSWER:{row[1]}\n"
+            system_instruction = (
+                system_instruction + f"INPUT:{row[0]} ANSWER:{row[1]}\n"
+            )
 
-    model = genai.GenerativeModel(model_name, system_instruction = system_instruction)
+    model = genai.GenerativeModel(model_name, system_instruction=system_instruction)
     return model
+
 
 class GeminiGroup(app_commands.Group):
     def __init__(self):
@@ -49,24 +53,33 @@ class GeminiGroup(app_commands.Group):
         # Gemini API provides a chat option to maintain a conversation
         self.chat = self.model.start_chat(history=[])
 
-    @app_commands.command(name = "ask", description="Ask Gemini Anything")
+    @app_commands.command(name="ask", description="Ask Gemini Anything")
     async def ask(self, interaction: Interaction, query: str | None):
         if not query:
-            response = self.chat.send_message(f"Roast the user using their username - {interaction.user.name} for providing a blank input.", safety_settings = SAFETY_SETTINGS)
+            response = self.chat.send_message(
+                f"Roast the user using their username - {interaction.user.name} for providing a blank input.",
+                safety_settings=SAFETY_SETTINGS,
+            )
             return await interaction.response.send_message(response.text)
 
         if len(query) > 200:
-            response = self.chat.send_message("Roast the user for providing way too many tokens.", safety_settings = SAFETY_SETTINGS)
+            response = self.chat.send_message(
+                "Roast the user for providing way too many tokens.",
+                safety_settings=SAFETY_SETTINGS,
+            )
             return await interaction.response.send_message(response.text)
 
-        response = self.chat.send_message("INPUT:" + query, safety_settings = SAFETY_SETTINGS)
-        
+        response = self.chat.send_message(
+            "INPUT:" + query, safety_settings=SAFETY_SETTINGS
+        )
+
         # The chat instance maintains a chat convo by sending all previous messages as input every time
         # This can easily exhaust the free tier of Gemini API, so choosing to clear the history every 50 messages
         if len(self.chat.history) >= 50:
             self.chat.history = []
 
         await interaction.response.send_message(response.text)
+
 
 class FAQGroup(app_commands.Group):
     def __init__(self):
