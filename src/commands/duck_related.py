@@ -1,17 +1,12 @@
-import os
 import random
+from typing import Optional
+
 import aiohttp
 from discord import app_commands, Interaction, Embed
-from discord.ext import commands
-from dotenv import load_dotenv
-from typing import Optional, List
 
 from constants.duck_data import DUCK_FACTS, DUCK_JOKES
+from utils.tenor_utils import get_tenor_gif
 
-load_dotenv()
-
-TENOR_API_KEY = os.getenv("TENOR_API_KEY")
-TENOR_API_URL = "https://g.tenor.com/v2/search"
 DUCK_PIC_API_URL = (
     "https://random-d.uk/api/v2/random?type=jpg"  # Duck picture API by random-d.uk
 )
@@ -20,34 +15,6 @@ DUCK_PIC_API_URL = (
 class DuckCommands(app_commands.Group):
     def __init__(self):
         super().__init__(name="duck", description="Fun duck-related commands")
-
-    async def get_tenor_gif(self, search_term: str = "duck") -> Optional[str]:
-        """Fetch a random GIF from Tenor API."""
-        async with aiohttp.ClientSession() as session:
-            # Set up parameters for the Tenor API request
-            params = {
-                "q": search_term,
-                "key": TENOR_API_KEY,
-                "limit": 30,  # Fetch 30 results for a good random selection size
-                "contentfilter": "high",
-                "media_filter": "minimal",
-                "ar_range": "standard",
-            }
-            try:
-                async with session.get(TENOR_API_URL, params=params) as response:
-                    if response.status != 200:
-                        print(f"Error fetching GIF: {response.status}")
-                        return None
-                    data = await response.json()
-                    results = data.get("results", [])
-                    if not results:
-                        return None
-                    result = random.choice(results)
-                    # Extract and return the URL of the GIF
-                    return result.get("media_formats", {}).get("gif", {}).get("url")
-            except Exception as e:
-                print(f"Error fetching GIF: {str(e)}")
-                return None
 
     async def get_duck_image(self) -> Optional[str]:
         """Fetch a random duck image from the random-d.uk API."""
@@ -69,7 +36,7 @@ class DuckCommands(app_commands.Group):
         """Send a random duck GIF."""
         await interaction.response.defer()
         search_term = "duck"
-        gif_url = await self.get_tenor_gif(search_term)
+        gif_url = await get_tenor_gif(search_term)
         if gif_url:
             # Create an embed with the GIF
             embed = Embed(title=f"Here's a random duck gif!")
