@@ -36,10 +36,11 @@ def get_day_from_timestamp(timestamp: datetime):
     return days_since_epoch
 
 
-class SkullBoardDB: 
+class SkullBoardDB:
     db: DB.DataBase = None
     threshold: int = -1
     guild_id: int = -1
+
     def __init__(self):
         """Initialise the skullboard with tables"""
         tables = [
@@ -74,17 +75,17 @@ class SkullBoardDB:
     frequency INTEGER
     );""",
         ]
-        
+
         if not SkullBoardDB.db:
             load_dotenv()  # Load environment variables from .env file
             SkullBoardDB.threshold = int(str(os.environ.get("REQUIRED_REACTIONS")))
             SkullBoardDB.guild_id = int(str(os.environ.get("GUILD_ID")))
             SkullBoardDB.db = DB.DataBase(tables, "skull.sqlite")
 
-    async def update_skull_post(self,postID, userID, channelID, day, count):
+    async def update_skull_post(self, postID, userID, channelID, day, count):
         """Update a post's skull count in DB"""
         curr_day = get_current_day()
-        #Do not update posts older than 7 days
+        # Do not update posts older than 7 days
         if not curr_day - 7 < day:
             return
         count = min(255, max(count, 0))
@@ -94,7 +95,7 @@ class SkullBoardDB:
         frequency = excluded.frequency;
         """
         await self.db.execute(sql, (postID, userID, channelID, day, count))
-            
+
         return
 
     async def expire(self):
@@ -108,6 +109,7 @@ class SkullBoardDB:
             print("Successfullly expired data")
 
     """Histograms of skull ratings for weeks,months,years, and alltime"""
+
     async def get_7_day_histogram(self):
         sql = """SELECT frequency AS bucket,
        COUNT(frequency) AS count
@@ -183,9 +185,7 @@ LIMIT {top_x};
 """
         return await self.db.execute(sql, None, "all")
 
-
-
-    async def get_user_rankings(self,top_x=10):
+    async def get_user_rankings(self, top_x=10):
         """Returns the counts of posts each user has which reaches the skull threshold"""
         sql = f"""
         SELECT userId, SUM(frequency) as total_frequency
@@ -208,7 +208,7 @@ LIMIT {top_x};
         return await self.db.execute(sql, None, "all")
 
     # get hall of fame (all time post ranking)
-    async def get_HOF(self,top_x=10):
+    async def get_HOF(self, top_x=10):
         """Returns the posts qwith the most skull reactions"""
         sql = f"""
 SELECT postId, userId, channelId, day, frequency 
@@ -289,8 +289,7 @@ LIMIT {top_x};
         delete_sql = "DELETE FROM posts WHERE day <= ?;"
         await self.db.execute(delete_sql, (week_ago,))
 
-
-        #move days into alltime
+        # move days into alltime
         year_ago = curr_day - 365
         alltime_sql = f"""
 INSERT INTO alltime (bucket, frequency)
@@ -309,10 +308,9 @@ WHERE day < {year_ago};
         await self.db.execute(delete_sql)
 
 
-
-
 class SkullboardManager:
-    db: SkullBoardDB = None # shared instance
+    db: SkullBoardDB = None  # shared instance
+
     def __init__(self, client: Client):
         """Initialise SkullboardManager"""
         self.client = client
@@ -357,7 +355,7 @@ class SkullboardManager:
 
         try:
             await self.db.update_skull_post(
-                message_id, author_id,channel_id, message_time, current_count
+                message_id, author_id, channel_id, message_time, current_count
             )
         except Exception as e:
             print("Could not update skull post for ", message_id)
@@ -484,9 +482,9 @@ class SkullGroup(app_commands.Group):
         )
         await interaction.response.send_message(skullboard_info)
 
+
 class SkullStatGroup(app_commands.Group):
-    db : SkullBoardDB = None
-    
+    db: SkullBoardDB = None
 
     def __init__(self):
         super().__init__(name="stats", description="Get stats about the skullboard")
@@ -498,20 +496,24 @@ class SkullStatGroup(app_commands.Group):
         try:
             rankings = await SkullStatGroup.db.get_user_rankings()
             if not rankings:
-                await interaction.response.send_message("No rankings available at the moment.")
+                await interaction.response.send_message(
+                    "No rankings available at the moment."
+                )
                 return
 
             # Format the rankings into a more readable message
             msg = "User Ranking by number of posts sent to the skullboard:\n"
             for i, (user_id, frequency) in enumerate(rankings[:10], start=1):
-                #silent mention
+                # silent mention
                 msg += f"{i}. 💀 {frequency} : <@!{user_id}>\n"
 
             await interaction.response.send_message(msg)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
-    @app_commands.command(name="hof", description="Hall of fame rankings for the top posts")
+    @app_commands.command(
+        name="hof", description="Hall of fame rankings for the top posts"
+    )
     async def hof(self, interaction: Interaction):
         try:
             hof_entries = await self.db.get_HOF()
@@ -521,12 +523,15 @@ class SkullStatGroup(app_commands.Group):
 
             # Format the HoF entries into a more readable message
             msg = "Hall of Fame:\n"
-            for i, (post_id, user_id, channel_id,day, frequency) in enumerate(hof_entries, start=1):
-                #silent mention
+            for i, (post_id, user_id, channel_id, day, frequency) in enumerate(
+                hof_entries, start=1
+            ):
+                # silent mention
                 msg += f"{i}. 💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>\n"
 
             await interaction.response.send_message(msg)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
+
 
 skullboard_group = SkullGroup()
