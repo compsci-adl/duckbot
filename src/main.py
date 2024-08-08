@@ -15,7 +15,7 @@ from discord import (
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from commands import skullboard
+from commands import gemini, skullboard
 
 # Load environment variables from .env file
 load_dotenv()
@@ -41,6 +41,11 @@ class DuckBot(commands.Bot):
         self.skullboard_manager = skullboard.SkullboardManager(
             self
         )  # Initialise SkullboardManager
+
+        # Initialise gemini model
+        self.gemini_model = gemini.GeminiBot(
+            "models/gemini-1.5-flash-001", "data/duckbot_train_data.csv"
+        )
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -92,6 +97,12 @@ async def ping(interaction: Interaction):
     await interaction.response.send_message("Pong!")
 
 
+@client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
+async def ask_gemini(interaction: Interaction, query: str | None):
+    bot_response = client.gemini_model.query(query, interaction.user)
+    await interaction.response.send_message(bot_response)
+
+
 @client.tree.command(
     description="View useful information about using the bot.",
     guild=Object(GUILD_ID),
@@ -126,7 +137,9 @@ async def help(interaction: Interaction):
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
-    pass
+    if client.user.mentioned_in(message) and message.author != client.user:
+        bot_response = client.gemini_model.query(message.content, message.author)
+        await message.reply(bot_response)
 
 
 # Add the token of bot
