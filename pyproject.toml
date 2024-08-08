@@ -12,6 +12,8 @@ python = "^3.11"
 "discord.py" = "2.3.2"
 black = "^24.4.2"
 poetry-dotenv-plugin = "^0.2.0"
+pathlib = "^1.0.1"
+aiosqlite = "^0.20.0"
 
 [build-system]
 requires = ["poetry-core"]
