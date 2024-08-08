@@ -507,8 +507,7 @@ class SkullStatGroup(app_commands.Group):
             for i, (user_id, frequency) in enumerate(rankings[:10], start=1):
                 msg += f"{i}. 💀 {frequency} : <@!{user_id}>\n"
 
-            await interaction.response.send_message(msg,
-            allowed_mentions=no_interact)
+            await interaction.response.send_message(msg, allowed_mentions=no_interact)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
@@ -530,7 +529,7 @@ class SkullStatGroup(app_commands.Group):
                 # silent mention
                 msg += f"{i}. 💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>\n"
 
-            await interaction.response.send_message(msg,allowed_mentions=no_interact)
+            await interaction.response.send_message(msg, allowed_mentions=no_interact)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
