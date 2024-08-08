@@ -36,10 +36,11 @@ def get_day_from_timestamp(timestamp: datetime):
     return days_since_epoch
 
 
-class SkullBoardDB: 
+class SkullBoardDB:
     db: DB.DataBase = None
     threshold: int = -1
     guild_id: int = -1
+
     def __init__(self):
         """Initialise the skullboard with tables"""
         tables = [
@@ -74,17 +75,17 @@ class SkullBoardDB:
     frequency INTEGER
     );""",
         ]
-        
+
         if not SkullBoardDB.db:
             load_dotenv()  # Load environment variables from .env file
             SkullBoardDB.threshold = int(str(os.environ.get("REQUIRED_REACTIONS")))
             SkullBoardDB.guild_id = int(str(os.environ.get("GUILD_ID")))
             SkullBoardDB.db = DB.DataBase(tables, "skull.sqlite")
 
-    async def update_skull_post(self,postID, userID, channelID, day, count):
+    async def update_skull_post(self, postID, userID, channelID, day, count):
         """Update a post's skull count in DB"""
         curr_day = get_current_day()
-        #Do not update posts older than 7 days
+        # Do not update posts older than 7 days
         if not curr_day - 7 < day:
             return
         count = min(255, max(count, 0))
@@ -94,7 +95,7 @@ class SkullBoardDB:
         frequency = excluded.frequency;
         """
         await self.db.execute(sql, (postID, userID, channelID, day, count))
-            
+
         return
 
     async def expire(self):
@@ -108,6 +109,7 @@ class SkullBoardDB:
             print("Successfullly expired data")
 
     """Histograms of skull ratings for weeks,months,years, and alltime"""
+
     async def get_7_day_histogram(self):
         sql = """SELECT frequency AS bucket,
        COUNT(frequency) AS count
@@ -183,9 +185,7 @@ LIMIT {top_x};
 """
         return await self.db.execute(sql, None, "all")
 
-
-
-    async def get_user_rankings(self,top_x=10):
+    async def get_user_rankings(self, top_x=10):
         """Returns the counts of posts each user has which reaches the skull threshold"""
         sql = f"""
         SELECT userId, SUM(frequency) as total_frequency
@@ -208,7 +208,7 @@ LIMIT {top_x};
         return await self.db.execute(sql, None, "all")
 
     # get hall of fame (all time post ranking)
-    async def get_HOF(self,top_x=10):
+    async def get_HOF(self, top_x=10):
         """Returns the posts qwith the most skull reactions"""
         sql = f"""
 SELECT postId, userId, channelId, day, frequency 
@@ -289,8 +289,7 @@ LIMIT {top_x};
         delete_sql = "DELETE FROM posts WHERE day <= ?;"
         await self.db.execute(delete_sql, (week_ago,))
 
-
-        #move days into alltime
+        # move days into alltime
         year_ago = curr_day - 365
         alltime_sql = f"""
 INSERT INTO alltime (bucket, frequency)
@@ -307,8 +306,6 @@ DELETE FROM days
 WHERE day < {year_ago};
 """
         await self.db.execute(delete_sql)
-
-
 
 
 class SkullboardManager:
@@ -568,6 +565,7 @@ class SkullGroup(app_commands.Group):
             await interaction.response.send_message(
                 f"An error occurred: {str(e)}", ephemeral=True
             )
+
 
 
 skullboard_group = SkullGroup()
