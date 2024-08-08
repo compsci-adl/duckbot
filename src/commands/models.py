@@ -2,57 +2,157 @@ import os
 import requests
 import re
 
-from discord import Client, Interaction, AllowedMentions, Embed, app_commands
+from dotenv import load_dotenv
+from datetime import datetime, timezone, timedelta
 
-from models.databases.skullboard_database import SkullboardDB
-from utils import time
+from discord import Embed, Client, Interaction, AllowedMentions, Embed, app_commands
+
+from models import database as DB
+from models.schema.skullboard_sql import SkullSQL
 from constants.colours import LIGHT_GREY
 
-import datetime as dt
 
-from discord import app_commands, Interaction
-
-from commands import database as DB
-
+"""//////////////////////UTILS/////////////////////////"""
 
 # Adelaide timezone (UTC+9:30)
 tz = timezone(timedelta(hours=9.5))
 
-
-# Gets current day since 1970
 def get_current_day():
-    # Converts to Adelaide time
+    """Generates a numerical value for each day"""
     now = datetime.now(tz)
     epoch = datetime(1970, 1, 1, tzinfo=tz)
     days_since_epoch = (now - epoch).days
     return days_since_epoch
 
 
-# Gets current day of timestamp since 1970
 def get_day_from_timestamp(timestamp: datetime):
-    # Converts to Adelaide time
+    """Generates the numerical value of a day given a timestamp"""
     epoch = datetime(1970, 1, 1, tzinfo=tz)
     days_since_epoch = (timestamp - epoch).days
     return days_since_epoch
 
+"""////////////////////////////////////////////////////"""
 
-class SkullBoardDB:
-    db: DB.DataBase = None
-    threshold: int = -1
-    guild_id: int = -1
 
-from models.databases.skullboard_database import SkullboardDB
-from utils import time
-from constants.colours import LIGHT_GREY
+class SkullboardDB:
+    """Singleton class for the skullboard database"""
+
+    db: DB.DataBase = None  # Database to connect
+    threshold: int = -1  # Skulls needed for posting on skullboard
+    guild_id: int = -1  # Channel to post skull messages
+
+    def __init__(self):
+        """Initialise the skullboard with tables"""
+        if not SkullboardDB.db:
+            load_dotenv()  # Load environment variables from .env file
+            self.threshold = int(str(os.environ.get("REQUIRED_REACTIONS")))
+            self.guild_id = int(str(os.environ.get("GUILD_ID")))
+            self.db = DB.DataBase(SkullSQL.initialisation_tables, "skull.sqlite")
+
+    async def update_skull_post(self, postID, userID, channelID, day, count):
+        """Update a post's skull count in the database"""
+        curr_day = get_current_day()
+        # Do not update posts older than 7 days
+        if not curr_day - 7 < day:
+            return
+
+        count = min(255, max(count, 0))
+        sql = SkullSQL.update_skull_post
+        await self.db.execute(sql, (postID, userID, channelID, day, count))
+
+        return
+
+    """Returns histograms of skull ratings for weeks, months, years, and alltime"""
+
+    async def get_7_day_histogram(self):
+        """Returns histogram of all skull posts in the past 7 days"""
+        sql = SkullSQL.histogram_7
+        return await self.db.execute(sql, None, "all")
+
+    async def get_30_day_histogram(self):
+        """Returns histogram of all skull posts in the past 30 days"""
+        curr_day = get_current_day()
+        month_ago = curr_day - 31
+        sql = SkullSQL.histogram_30
+        return await self.db.execute(sql, (month_ago), "all")
+
+    async def get_365_day_histogram(self):
+        """Returns histogram of all skull posts in the past 365 days"""
+        sql = SkullSQL.histogram_365
+        return await self.db.execute(sql, None, "all")
+
+    async def get_alltime_histogram(self):
+        """Returns histogram of all skull posts ever made"""
+        sql = SkullSQL.histogram_alltime
+        return await self.db.execute(sql, None, "all")
+
+    async def get_7_day_post(self, top_x=5):
+        """Returns top skullboard posts this week"""
+        sql = SkullSQL.day_7_post
+        return await self.db.execute(sql, (top_x), "all")
+
+    async def get_user_rankings(self, top_x=10):
+        """Returns the number of posts which reaches the skull threshold for each user (All Time)"""
+        sql = SkullSQL.user_rankings
+        return await self.db.execute(sql, (self.threshold, top_x), "all")
+
+    # get hall of fame (all time post ranking)
+    async def get_HOF(self, top_x=10):
+        """Returns the posts with the most skull reactions (All Time)"""
+        sql = SkullSQL.hof_rankings
+        return await self.db.execute(sql, (self.threshold, top_x), "all")
+
+    async def expire(self):
+        """To be called once a day.
+        Expire posts:
+        - Archive posts older than 7 days
+        - Merge histograms from >365 days ago into alltime
+        - Update the hall of fame"""
+        try:
+            await self.expire_posts()
+        except Exception as e:
+            print("Error expiring data: ", e)
+        else:
+            print("Successfullly expired data")
+
+    async def expire_posts(self):
+        """
+        SQL commands for expiration follow the format:
+        [origin_table]_expire_[destination_table]
+        """
+        curr_day = get_current_day()
+        week_ago = curr_day - 7
+        year_ago = curr_day - 365
+
+        # Expiring "posts" table (7 days or older)
+        await self.db.execute(SkullSQL.posts_expire_hof, (week_ago, self.threshold))
+
+        await self.db.execute(SkullSQL.posts_expire_users, (week_ago, self.threshold))
+
+        await self.db.execute(SkullSQL.posts_expire_days, (week_ago))
+
+        await self.db.execute(SkullSQL.posts_expire_delete, (week_ago))
+
+        # Expiring "hof" (Hall of Fame) table (Only store top 100 posts)
+        for sql in SkullSQL.posts_expire_hof:
+            await self.db.execute(sql)
+
+        # Expiring "days" table (365 days or older)
+        await self.db.execute(SkullSQL.days_expire_alltime, (year_ago))
+
+        await self.db.execute(SkullSQL.days_expire_delete, (year_ago))
 
 
 class SkullboardManager:
     """Manages discord activities related to the skullboard"""
 
+    db: SkullboardDB = None  # shared instance
+
     def __init__(self, client: Client):
         """Initialise SkullboardManager"""
         self.client = client
-        self.db = SkullboardDB()
+        if not self.db:
+            self.db = SkullboardDB()
 
     async def get_reaction_count(self, message, emoji):
         """Get count of a specific emoji reaction on a message"""
@@ -85,7 +185,7 @@ class SkullboardManager:
         skullboard_message_id = None
         message_jump_url = message.jump_url
 
-        message_time = time.get_day_from_timestamp(message.created_at)
+        message_time = get_day_from_timestamp(message.created_at)
         message_id = message.id
         channel_id = message.channel.id
         author_id = message.author.id
@@ -209,14 +309,16 @@ class SkullGroup(app_commands.Group):
 
     def __init__(self):
         super().__init__(name="skull", description="Skullboard queries")
-        self.db = SkullboardDB()
+        if not self.db:
+            load_dotenv()  # Load environment variables from .env file
+            self.db = SkullboardDB()
         self.skullboard_channel_id = int(str(os.environ.get("SKULLBOARD_CHANNEL_ID")))
 
     @app_commands.command(name="about", description="Learn about the Skullboard")
     async def about(self, interaction: Interaction):
         skullboard_info = (
-            "## 💀 WELCOME TO THE SKULLZONE 💀\n\n"
-            "The **Skullboard** is a fun way to track popular posts and active users in the CS Club! 💀\n"
+            "## 💀 WELCOME TO THE BONEZONE 💀\n\n"
+            "The **Skullboard** is the way we track the BONIEST of BOZOS in the CS Club! 💀\n"
             f"When a post receives a certain number of 💀 reactions, it gets added to <#{self.skullboard_channel_id}>. 💀\n"
             "Users earn a 💀 for their popular posts, and these 💀 contribute to their overall ranking. 💀\n"
         )
@@ -229,83 +331,64 @@ class SkullGroup(app_commands.Group):
         embed = Embed(colour=LIGHT_GREY)
         embed.add_field(name="Commands:", value=cmds)
         await interaction.response.send_message(
-            skullboard_info,
-            embed=embed,
-            allowed_mentions=AllowedMentions().none(),
-            ephemeral=True,
+            skullboard_info, embed=embed, allowed_mentions=AllowedMentions().none()
         )
 
-    @app_commands.command(name="rank", description="Get top users")
+    @app_commands.command(name="rank", description="Provides ranking of users")
     async def rank(self, interaction: Interaction):
         try:
             rankings = await self.db.get_user_rankings()
             if not rankings:
                 await interaction.response.send_message(
-                    "Database error fetching user rankings - check the logs.",
-                    ephemeral=True,
+                    "No rankings available at the moment."
                 )
                 return
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Users of All-Time:\n"]
-
             for user_id, frequency in rankings[:10]:
                 # Format the rankings into a readable message
-                line = f"💀 {frequency} : <@!{user_id}>"
+                line =f"💀 {frequency} : <@!{user_id}>"
                 msg.append(line)
             msg = "\n".join(msg)
 
-            embed = Embed(
-                title="💀💀💀   TOP SKULLERS   💀💀💀",
-                colour=LIGHT_GREY,
-                description=msg,
-            )
+            embed = Embed(title="💀💀💀   TOP SKULLERS   💀💀💀", colour=LIGHT_GREY,description=msg)
+            
 
             await interaction.response.send_message(
-                embed=embed, allowed_mentions=AllowedMentions().none(), ephemeral=True
+                embed=embed, allowed_mentions=AllowedMentions().none()
             )
 
         except Exception as e:
-            await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
-            )
+            await interaction.response.send_message(f"An error occurred: {str(e)}")
 
-    @app_commands.command(name="hof", description="Get top posts")
+    @app_commands.command(
+        name="hof", description="Hall of fame rankings for the top posts"
+    )
     async def hof(self, interaction: Interaction):
         try:
             hof_entries = await self.db.get_HOF()
             if not hof_entries:
-                await interaction.response.send_message(
-                    "Database error fetching Hall of Fame - check the logs.",
-                    ephemeral=True,
-                )
+                await interaction.response.send_message("The Hall of Fame is empty.")
                 return
-
+            
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Posts of All-Time:"]
-
-            # The post date is unused, may use in future if needed.
             for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
                 # Format the HoF entries into a readable message
-                line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>"
+                line =f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>"
                 msg.append(line)
-
+            
             msg = "\n".join(msg)
-            embed = Embed(
-                title="💀💀💀   HALL OF FAME   💀💀💀",
-                colour=LIGHT_GREY,
-                description=msg,
-            )
+            embed = Embed(title="💀💀💀   HALL OF FAME   💀💀💀", colour=LIGHT_GREY,description=msg)
+            
 
             await interaction.response.send_message(
-                embed=embed, allowed_mentions=AllowedMentions().none(), ephemeral=True
+                embed=embed, allowed_mentions=AllowedMentions().none()
             )
 
         except Exception as e:
-            await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
-            )
-
+            await interaction.response.send_message(f"An error occurred: {str(e)}")
 
 
 skullboard_group = SkullGroup()
