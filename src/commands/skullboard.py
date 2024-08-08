@@ -505,6 +505,7 @@ class SkullGroup(app_commands.Group):
                     ephemeral=True,
                 )
                 return
+            no_interact = AllowedMentions().none()
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Users of All-Time:\n"]
