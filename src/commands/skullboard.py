@@ -2,7 +2,7 @@ import os
 import requests
 import re
 
-from discord import Embed, Client
+from discord import Embed, Client, Interaction, AllowedMentions
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
@@ -500,14 +500,15 @@ class SkullStatGroup(app_commands.Group):
                     "No rankings available at the moment."
                 )
                 return
+            no_interact = AllowedMentions().none()
 
             # Format the rankings into a more readable message
             msg = "User Ranking by number of posts sent to the skullboard:\n"
             for i, (user_id, frequency) in enumerate(rankings[:10], start=1):
-                # silent mention
                 msg += f"{i}. 💀 {frequency} : <@!{user_id}>\n"
 
-            await interaction.response.send_message(msg)
+            await interaction.response.send_message(msg,
+            allowed_mentions=no_interact)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
@@ -520,7 +521,7 @@ class SkullStatGroup(app_commands.Group):
             if not hof_entries:
                 await interaction.response.send_message("The Hall of Fame is empty.")
                 return
-
+            no_interact = AllowedMentions().none()
             # Format the HoF entries into a more readable message
             msg = "Hall of Fame:\n"
             for i, (post_id, user_id, channel_id, day, frequency) in enumerate(
@@ -529,7 +530,7 @@ class SkullStatGroup(app_commands.Group):
                 # silent mention
                 msg += f"{i}. 💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>\n"
 
-            await interaction.response.send_message(msg)
+            await interaction.response.send_message(msg,allowed_mentions=no_interact)
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
