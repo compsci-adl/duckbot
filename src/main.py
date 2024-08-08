@@ -58,6 +58,7 @@ class DuckBot(commands.Bot):
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
         for _, module_name, _ in pkgutil.iter_modules(["src/commands"]):
+            print(module_name)
             module = importlib.import_module(f"commands.{module_name}")
             for attribute_name in dir(module):
                 attribute = getattr(module, attribute_name)
