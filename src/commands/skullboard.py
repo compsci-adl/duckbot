@@ -178,8 +178,8 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="about", description="Learn about the Skullboard")
     async def about(self, interaction: Interaction):
         skullboard_info = (
-            "## 💀 WELCOME TO THE BONEZONE 💀\n\n"
-            "The **Skullboard** is the way we track the BONIEST of BOZOS in the CS Club! 💀\n"
+            "## 💀 WELCOME TO THE SKULLZONE 💀\n\n"
+            "The **Skullboard** is a fun way to track popular posts and active users in the CS Club! 💀\n"
             f"When a post receives a certain number of 💀 reactions, it gets added to <#{self.skullboard_channel_id}>. 💀\n"
             "Users earn a 💀 for their popular posts, and these 💀 contribute to their overall ranking. 💀\n"
         )

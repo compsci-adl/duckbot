@@ -1,12 +1,10 @@
-import aiosqlite
 import asyncio
 import logging
-
-import asyncio
 from functools import wraps
 from pathlib import Path
 from typing import List
-from typing import Optional, Union, List, Tuple
+
+import aiosqlite
 
 
 """/////////////////UTILS///////////////////////"""
@@ -21,20 +19,20 @@ def get_db_folder():
 """/////////////////////////////////////////////"""
 
 
-class DataBase:
-    """A wrapper for a SQLite database"""
+class Database:
+    """A wrapper for a SQLite Database"""
 
     def __init__(
         self, commands: List[str], db_name: str, db_folder: Path = get_db_folder()
     ):
-        """Initialise the SQLite database. must include .sqlite file extension in database name"""
+        """Initialise the SQLite Database. must include .sqlite file extension in Database name"""
         path = db_folder / db_name
-        path.touch(exist_ok=True)  # create if database does not exist
+        path.touch(exist_ok=True)  # create if Database does not exist
         self.db_path = path.resolve()
         self.name = db_name
         asyncio.run(
             self.initialise_database(commands)
-        )  # Catastrophic error: will crash if initialise_database fails
+        )  # Catastrophic error: will crash if initialise_Database fails
 
     def crash_handler(func):
         """Decorator to handle crashes in async functions by logging exceptions and returning None."""
@@ -55,7 +53,7 @@ class DataBase:
         parameters: tuple | List[tuple] | None = None,
         fetch: str = "none",
     ) -> tuple | List[tuple] | None:
-        """Execute a SQLite command into a database.
+        """Execute a SQLite command into a Database.
         Parameters are used for (?) values in SQL statements.
         May choose to retrieve data from query, and whether to return one or all rows (fetch= "none" | "one" | "all").
 
@@ -85,7 +83,7 @@ class DataBase:
                     raise  # Re-raise the exception after logging
 
     async def initialise_database(self, sql_list: List[str]):
-        """List of commands to initialise database with. Cannot return any values"""
+        """List of commands to initialise Database with. Cannot return any values"""
         async with aiosqlite.connect(self.db_path) as db:
             try:
                 for sql in sql_list:

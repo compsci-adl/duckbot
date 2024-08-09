@@ -2,8 +2,8 @@ import os
 import importlib
 import pkgutil
 import asyncio
-from utils import time
 import logging
+
 from discord import (
     Intents,
     app_commands,
@@ -17,8 +17,9 @@ from discord import (
 from discord.ext import commands
 from dotenv import load_dotenv
 
-
+from utils import time
 from commands import skullboard
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -95,7 +96,7 @@ class DuckBot(commands.Bot):
                 )
 
     async def run_expiry_loop(self):
-        """rnus every minute checking for expiration"""
+        """runs every minute checking for expiration"""
         while True:
             curr = time.get_current_day()
             if self.prev_day != curr:

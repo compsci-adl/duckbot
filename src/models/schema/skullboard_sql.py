@@ -151,7 +151,7 @@ class SkullSQL:
 
     posts_expire_delete = "DELETE FROM posts WHERE day <= ?;"
 
-    days_expire_alltime = f"""
+    days_expire_alltime = """
     INSERT INTO alltime (bucket, frequency)
     SELECT bucket, SUM(frequency) AS total_frequency
     FROM days
@@ -159,7 +159,7 @@ class SkullSQL:
     GROUP BY bucket
     ON CONFLICT(bucket) DO UPDATE SET frequency = alltime.frequency + EXCLUDED.frequency;
     """
-    days_expire_delete = f"""
+    days_expire_delete = """
     DELETE FROM days
     WHERE day < ?;
     """
@@ -185,7 +185,7 @@ class SkullSQL:
     ORDER BY total_frequency DESC
     LIMIT ?;
     """
-    hof_rankings = f"""
+    hof_rankings = """
     SELECT postId, userId, channelId, day, frequency 
     FROM (
     SELECT postId, userId, channelId, day, frequency 
