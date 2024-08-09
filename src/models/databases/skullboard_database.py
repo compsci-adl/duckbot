@@ -1,28 +1,35 @@
 import os
-
+import logging
 
 from dotenv import load_dotenv
 
-from models import database as DB
+from models.database import DataBase
 from models.schema.skullboard_sql import SkullSQL
 from utils import time
 
 
-class SkullboardDB:
+class SkullboardDB(DataBase):
     """Singleton class for the skullboard database"""
 
-    db: DB.DataBase = None  # Database to connect
-    threshold: int = -1  # Skulls needed for posting on skullboard
-    guild_id: int = -1  # Channel to post skull messages
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        """A new instance points to the original instance, if it exists"""
+        if not cls._instance:
+            cls._instance = super(SkullboardDB, cls).__new__(cls)
+        return cls._instance
 
     def __init__(self):
         """Initialise the skullboard with tables"""
-        if not SkullboardDB.db:
+        # Initialise ONCE
+        if not hasattr(self, "initialised"):
             load_dotenv()  # Load environment variables from .env file
-            self.threshold = int(str(os.environ.get("REQUIRED_REACTIONS")))
-            self.guild_id = int(str(os.environ.get("GUILD_ID")))
-            self.db = DB.DataBase(SkullSQL.initialisation_tables, "skull.sqlite")
+            self.threshold = int(os.environ.get("REQUIRED_REACTIONS", 0))
+            self.guild_id = int(os.environ.get("GUILD_ID", -1))
+            super().__init__(SkullSQL.initialisation_tables, "skull.sqlite")
+            self.initialised = True
 
+    @DataBase.crash_handler
     async def update_skull_post(self, postID, userID, channelID, day, count):
         """Update a post's skull count in the database"""
         curr_day = time.get_current_day()
@@ -31,65 +38,59 @@ class SkullboardDB:
             return
 
         count = min(255, max(count, 0))
+        params = (postID, userID, channelID, day, count)
         sql = SkullSQL.update_skull_post
-        await self.db.execute(sql, (postID, userID, channelID, day, count))
-
+        await self.execute(sql, params)
         return
 
     """Returns histograms of skull ratings for weeks, months, years, and alltime"""
 
+    @DataBase.crash_handler
     async def get_7_day_histogram(self):
         """Returns histogram of all skull posts in the past 7 days"""
         sql = SkullSQL.histogram_7
-        return await self.db.execute(sql, None, "all")
+        return await self.execute(sql, None, "all")
 
+    @DataBase.crash_handler
     async def get_30_day_histogram(self):
         """Returns histogram of all skull posts in the past 30 days"""
         curr_day = time.get_current_day()
         month_ago = curr_day - 31
         sql = SkullSQL.histogram_30
-        return await self.db.execute(sql, (month_ago,), "all")
+        return await self.execute(sql, (month_ago,), "all")
 
+    @DataBase.crash_handler
     async def get_365_day_histogram(self):
         """Returns histogram of all skull posts in the past 365 days"""
         sql = SkullSQL.histogram_365
-        return await self.db.execute(sql, None, "all")
+        return await self.execute(sql, None, "all")
 
+    @DataBase.crash_handler
     async def get_alltime_histogram(self):
         """Returns histogram of all skull posts ever made"""
         sql = SkullSQL.histogram_alltime
-        return await self.db.execute(sql, None, "all")
+        return await self.execute(sql, None, "all")
 
+    @DataBase.crash_handler
     async def get_7_day_post(self, top_x=5):
         """Returns top skullboard posts this week"""
         sql = SkullSQL.day_7_post
-        return await self.db.execute(sql, (top_x), "all")
+        return await self.execute(sql, (top_x), "all")
 
+    @DataBase.crash_handler
     async def get_user_rankings(self, top_x=10):
         """Returns the number of posts which reaches the skull threshold for each user (All Time)"""
         sql = SkullSQL.user_rankings
-        return await self.db.execute(sql, (self.threshold, top_x), "all")
+        return await self.execute(sql, (self.threshold, top_x), "all")
 
-    # get hall of fame (all time post ranking)
+    @DataBase.crash_handler
     async def get_HOF(self, top_x=10):
         """Returns the posts with the most skull reactions (All Time)"""
         sql = SkullSQL.hof_rankings
-        return await self.db.execute(sql, (self.threshold, top_x), "all")
+        return await self.execute(sql, (self.threshold, top_x), "all")
 
+    @DataBase.crash_handler
     async def expire(self):
-        """To be called once a day.
-        Expire posts:
-        - Archive posts older than 7 days
-        - Merge histograms from >365 days ago into alltime
-        - Update the hall of fame"""
-        try:
-            await self.expire_posts()
-        except Exception as e:
-            print("Error expiring data: ", e)
-        else:
-            print("Successfullly expired data")
-
-    async def expire_posts(self):
         """
         SQL commands for expiration follow the format:
         [origin_table]_expire_[destination_table]
@@ -99,22 +100,22 @@ class SkullboardDB:
         year_ago = curr_day - 365
 
         # Expiring "posts" table (7 days or older)
-        await self.db.execute(SkullSQL.posts_expire_hof, (week_ago, self.threshold))
+        await self.execute(SkullSQL.posts_expire_hof, (week_ago, self.threshold))
 
-        await self.db.execute(SkullSQL.posts_expire_users, (week_ago, self.threshold))
+        await self.execute(SkullSQL.posts_expire_users, (week_ago, self.threshold))
 
-        await self.db.execute(SkullSQL.posts_expire_days, (week_ago,))
+        await self.execute(SkullSQL.posts_expire_days, (week_ago,))
 
-        await self.db.execute(SkullSQL.posts_expire_delete, (week_ago,))
+        await self.execute(SkullSQL.posts_expire_delete, (week_ago,))
 
         # Expiring "hof" (Hall of Fame) table (Only store top 100 posts)
         # i have no idea why this completely bugs out when i put these commands in lists but they do.
-        await self.db.execute(SkullSQL.hof_expire_hof_1)
-        await self.db.execute(SkullSQL.hof_expire_hof_2)
-        await self.db.execute(SkullSQL.hof_expire_hof_3)
-        await self.db.execute(SkullSQL.hof_expire_hof_4)
+        await self.execute(SkullSQL.hof_expire_hof_1)
+        await self.execute(SkullSQL.hof_expire_hof_2)
+        await self.execute(SkullSQL.hof_expire_hof_3)
+        await self.execute(SkullSQL.hof_expire_hof_4)
 
         # Expiring "days" table (365 days or older)
-        await self.db.execute(SkullSQL.days_expire_alltime, (year_ago,))
+        await self.execute(SkullSQL.days_expire_alltime, (year_ago,))
 
-        await self.db.execute(SkullSQL.days_expire_delete, (year_ago,))
+        await self.execute(SkullSQL.days_expire_delete, (year_ago,))

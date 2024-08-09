@@ -1,5 +1,9 @@
 import aiosqlite
 import asyncio
+import logging
+
+import asyncio
+from functools import wraps
 from pathlib import Path
 from typing import List
 from typing import Optional, Union, List, Tuple
@@ -28,7 +32,22 @@ class DataBase:
         path.touch(exist_ok=True)  # create if database does not exist
         self.db_path = path.resolve()
         self.name = db_name
-        asyncio.run(self.initialise_database(commands))
+        asyncio.run(
+            self.initialise_database(commands)
+        )  # Catastrophic error: will crash if initialise_database fails
+
+    def crash_handler(func):
+        """Decorator to handle crashes in async functions by logging exceptions and returning None."""
+
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                logging.exception(f"{func.__name__} : args({args}) kwargs({kwargs})")
+                return None  # Suppress the exception and return None
+
+        return wrapper
 
     async def execute(
         self,
@@ -39,6 +58,8 @@ class DataBase:
         """Execute a SQLite command into a database.
         Parameters are used for (?) values in SQL statements.
         May choose to retrieve data from query, and whether to return one or all rows (fetch= "none" | "one" | "all").
+
+        Execute() raises an error when there is a databse error. In most cases, this should be handled by crash_handler.
         """
         async with aiosqlite.connect(self.db_path) as db:
             async with db.cursor() as cursor:
@@ -59,8 +80,7 @@ class DataBase:
                     return result
 
                 except Exception as e:
-                    print(f"Failed to execute SQL: {sql}")
-                    print(f"Error: {e}")
+                    logging.exception("SQLite execution")
                     await db.rollback()
                     raise  # Re-raise the exception after logging
 
@@ -74,7 +94,7 @@ class DataBase:
                 print("Successfully Initialised", self.name)
 
             except Exception as e:
-                print("Unsuccessfully Initialised", self.name)
-                print(f"Error initializing databases: {e}")
+                logging.exception(f"Database Initialisation: {self.name}")
                 await db.rollback()
+                raise  # Re-raise the exception after logging
             return

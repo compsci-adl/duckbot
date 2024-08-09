@@ -14,13 +14,10 @@ from constants.colours import LIGHT_GREY
 class SkullboardManager:
     """Manages discord activities related to the skullboard"""
 
-    db: SkullboardDB = None  # shared instance
-
     def __init__(self, client: Client):
         """Initialise SkullboardManager"""
         self.client = client
-        if not self.db:
-            self.db = SkullboardDB()
+        self.db = SkullboardDB()
 
     async def get_reaction_count(self, message, emoji):
         """Get count of a specific emoji reaction on a message"""
@@ -173,13 +170,9 @@ class SkullboardManager:
 
 
 class SkullGroup(app_commands.Group):
-    db: SkullboardDB = None
-
     def __init__(self):
         super().__init__(name="skull", description="Skullboard queries")
-        if not self.db:
-            load_dotenv()  # Load environment variables from .env file
-            self.db = SkullboardDB()
+        self.db = SkullboardDB()
         self.skullboard_channel_id = int(str(os.environ.get("SKULLBOARD_CHANNEL_ID")))
 
     @app_commands.command(name="about", description="Learn about the Skullboard")
@@ -208,7 +201,7 @@ class SkullGroup(app_commands.Group):
             rankings = await self.db.get_user_rankings()
             if not rankings:
                 await interaction.response.send_message(
-                    "No rankings available at the moment."
+                    "Database error fetching user rankings - check the logs."
                 )
                 return
 
@@ -240,7 +233,9 @@ class SkullGroup(app_commands.Group):
         try:
             hof_entries = await self.db.get_HOF()
             if not hof_entries:
-                await interaction.response.send_message("The Hall of Fame is empty.")
+                await interaction.response.send_message(
+                    "Database error fetching Hall of Fame - check the logs."
+                )
                 return
 
             # Warning: description in embed cannot be longer than 2048 characters

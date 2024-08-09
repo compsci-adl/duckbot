@@ -3,6 +3,7 @@ import importlib
 import pkgutil
 import asyncio
 from utils import time
+import logging
 from discord import (
     Intents,
     app_commands,
@@ -44,8 +45,13 @@ class DuckBot(commands.Bot):
             self
         )  # Initialise SkullboardManager
         self.prev_day = None
-
         self.expiry_loop = None
+
+        # logging
+        logging.basicConfig(
+            filename="DuckBot.log",  # Log file name
+            level=logging.INFO,  # Minimum log level to capture
+        )
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -94,7 +100,7 @@ class DuckBot(commands.Bot):
             curr = time.get_current_day()
             if self.prev_day != curr:
                 await self.skullboard_manager.db.expire()
-                print("Expired old data", curr)
+                logging.info(f"Expired old data {curr}")
                 self.prev_day = curr
             await asyncio.sleep(60)  # Wait 1 minute
 
