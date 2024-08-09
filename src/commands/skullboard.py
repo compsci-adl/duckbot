@@ -205,8 +205,6 @@ class SkullboardManager:
 
 
 class SkullGroup(app_commands.Group):
-    db: SkullboardDB = None
-
     def __init__(self):
         super().__init__(name="skull", description="Skullboard queries")
         self.db = SkullboardDB()
