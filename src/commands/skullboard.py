@@ -2,9 +2,13 @@ import os
 import requests
 import re
 
-from dotenv import load_dotenv
-
-from discord import Embed, Client, Interaction, AllowedMentions, Embed, app_commands
+from discord import (
+    Client, 
+    Interaction, 
+    AllowedMentions, 
+    Embed, 
+    app_commands
+)
 
 from models.databases.skullboard_database import SkullboardDB
 from utils import time
@@ -195,7 +199,7 @@ class SkullGroup(app_commands.Group):
             skullboard_info, embed=embed, allowed_mentions=AllowedMentions().none()
         )
 
-    @app_commands.command(name="rank", description="Provides ranking of users")
+    @app_commands.command(name="rank", description="Get top users")
     async def rank(self, interaction: Interaction):
         try:
             rankings = await self.db.get_user_rankings()
@@ -227,7 +231,7 @@ class SkullGroup(app_commands.Group):
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
     @app_commands.command(
-        name="hof", description="Hall of fame rankings for the top posts"
+        name="hof", description="Get top posts"
     )
     async def hof(self, interaction: Interaction):
         try:

@@ -6,17 +6,12 @@ from typing import List
 
 import aiosqlite
 
-
-"""/////////////////UTILS///////////////////////"""
-
-
 def get_db_folder():
+    """Gets the database folder, and creates one if it doesn't exist"""
     db_dir = Path.cwd() / "db"
-    db_dir.mkdir(exist_ok=True)  # create if folder does not exist
+    db_dir.mkdir(exist_ok=True)
     return db_dir
 
-
-"""/////////////////////////////////////////////"""
 
 
 class Database:
@@ -36,15 +31,14 @@ class Database:
 
     def crash_handler(func):
         """Decorator to handle crashes in async functions by logging exceptions and returning None."""
-
         @wraps(func)
         async def wrapper(*args, **kwargs):
             try:
                 return await func(*args, **kwargs)
-            except Exception as e:
-                logging.exception(f"{func.__name__} : args({args}) kwargs({kwargs})")
+            except Exception:
+                caller_class = args[0].__class__.__name__ if args else "Unknown"
+                logging.exception(f"{caller_class}.{func.__name__} : args({args}) kwargs({kwargs})")
                 return None  # Suppress the exception and return None
-
         return wrapper
 
     async def execute(
@@ -77,7 +71,7 @@ class Database:
                     await db.commit()
                     return result
 
-                except Exception as e:
+                except Exception:
                     logging.exception("SQLite execution")
                     await db.rollback()
                     raise  # Re-raise the exception after logging
@@ -91,7 +85,7 @@ class Database:
                 await db.commit()
                 print("Successfully Initialised", self.name)
 
-            except Exception as e:
+            except Exception:
                 logging.exception(f"Database Initialisation: {self.name}")
                 await db.rollback()
                 raise  # Re-raise the exception after logging
