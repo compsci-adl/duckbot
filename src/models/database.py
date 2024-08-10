@@ -31,6 +31,7 @@ class Database:
 
     def crash_handler(func):
         """Decorator to handle crashes in async functions by logging exceptions and returning None."""
+
         @wraps(func)
         async def wrapper(*args, **kwargs):
             try:
@@ -41,6 +42,7 @@ class Database:
                     f"{caller_class}.{func.__name__} : args({args}) kwargs({kwargs})"
                 )
                 return None  # Suppress the exception and return None
+
         return wrapper
 
     async def execute(
