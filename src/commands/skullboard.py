@@ -205,6 +205,7 @@ class SkullGroup(app_commands.Group):
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Users of All-Time:\n"]
+
             for user_id, frequency in rankings[:10]:
                 # Format the rankings into a readable message
                 line = f"💀 {frequency} : <@!{user_id}>"
@@ -236,6 +237,8 @@ class SkullGroup(app_commands.Group):
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Posts of All-Time:"]
+
+            # The post date is unused, may use in future if needed.
             for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
                 # Format the HoF entries into a readable message
                 line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>"
