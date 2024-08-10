@@ -2,13 +2,7 @@ import os
 import requests
 import re
 
-from discord import (
-    Client, 
-    Interaction, 
-    AllowedMentions, 
-    Embed, 
-    app_commands
-)
+from discord import Client, Interaction, AllowedMentions, Embed, app_commands
 
 from models.databases.skullboard_database import SkullboardDB
 from utils import time
@@ -230,9 +224,7 @@ class SkullGroup(app_commands.Group):
         except Exception as e:
             await interaction.response.send_message(f"An error occurred: {str(e)}")
 
-    @app_commands.command(
-        name="hof", description="Get top posts"
-    )
+    @app_commands.command(name="hof", description="Get top posts")
     async def hof(self, interaction: Interaction):
         try:
             hof_entries = await self.db.get_HOF()

@@ -6,12 +6,12 @@ from typing import List
 
 import aiosqlite
 
+
 def get_db_folder():
     """Gets the database folder, and creates one if it doesn't exist"""
     db_dir = Path.cwd() / "db"
     db_dir.mkdir(exist_ok=True)
     return db_dir
-
 
 
 class Database:
@@ -31,14 +31,18 @@ class Database:
 
     def crash_handler(func):
         """Decorator to handle crashes in async functions by logging exceptions and returning None."""
+
         @wraps(func)
         async def wrapper(*args, **kwargs):
             try:
                 return await func(*args, **kwargs)
             except Exception:
                 caller_class = args[0].__class__.__name__ if args else "Unknown"
-                logging.exception(f"{caller_class}.{func.__name__} : args({args}) kwargs({kwargs})")
+                logging.exception(
+                    f"{caller_class}.{func.__name__} : args({args}) kwargs({kwargs})"
+                )
                 return None  # Suppress the exception and return None
+
         return wrapper
 
     async def execute(
