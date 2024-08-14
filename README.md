@@ -25,9 +25,13 @@ To get started, please follow these steps:
     poetry install
     ```
 
-3. Copy `.env.example` to a new file `.env` and set required environment variables.
+3. [Create an app in the Discord developer portal and fetch the bot token](https://discord.com/developers/docs/quick-start/getting-started#step-1-creating-an-app) if you haven't already.
 
-4. Run the bot.
+4. [Enable privileged intents](https://discord.com/developers/docs/topics/gateway#enabling-privileged-intents) for the bot. You will need all 3 intents.
+
+5. Copy `.env.example` to a new file `.env` and set required environment variables.
+
+6. Run the bot.
 
     ```bash
     poetry run python src/main.py
@@ -36,6 +40,8 @@ To get started, please follow these steps:
 ## Contributing
 
 We welcome contributions to enhance Duckbot! If you find any issues, have suggestions, or want to request a feature, please follow our [Contributing Guidelines](https://github.com/compsci-adl/.github/blob/main/CONTRIBUTING.md).
+
+Before submitting a PR, please make sure your code passes linting checks using `poetry run black`. 
 
 ## License
 
