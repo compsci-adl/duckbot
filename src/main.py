@@ -111,7 +111,10 @@ client = DuckBot()
 
 @client.tree.command(description="Pong!", guild=Object(GUILD_ID))
 async def ping(interaction: Interaction):
-    await interaction.response.send_message("Pong!")
+    await interaction.response.send_message(
+        "Pong!",
+        ephemeral=True
+    )
 
 
 @client.tree.command(
