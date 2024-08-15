@@ -5,7 +5,7 @@ import aiohttp
 from discord import app_commands, Interaction, Embed
 
 from constants.duck_data import DUCK_FACTS, DUCK_JOKES
-from utils.tenor_utils import get_tenor_gif
+from utils.tenor import get_tenor_gif
 
 DUCK_PIC_API_URL = (
     "https://random-d.uk/api/v2/random?type=jpg"  # Duck picture API by random-d.uk
