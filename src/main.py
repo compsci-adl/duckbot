@@ -28,6 +28,7 @@ load_dotenv()
 GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
+TENOR_API_KEY = os.environ["TENOR_API_KEY"]
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
