@@ -10,7 +10,7 @@ services:
     networks:
       - csclub
     volumes:
-      - /home/admin/duckbot/db:/db
+      - ~/duckbot/db:/db
 
 networks:
   csclub:
