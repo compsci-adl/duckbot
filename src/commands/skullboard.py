@@ -190,7 +190,10 @@ class SkullGroup(app_commands.Group):
         embed = Embed(colour=LIGHT_GREY)
         embed.add_field(name="Commands:", value=cmds)
         await interaction.response.send_message(
-            skullboard_info, embed=embed, allowed_mentions=AllowedMentions().none()
+            skullboard_info,
+            embed=embed,
+            allowed_mentions=AllowedMentions().none(),
+            ephemeral=True,
         )
 
     @app_commands.command(name="rank", description="Get top users")
@@ -199,7 +202,8 @@ class SkullGroup(app_commands.Group):
             rankings = await self.db.get_user_rankings()
             if not rankings:
                 await interaction.response.send_message(
-                    "Database error fetching user rankings - check the logs."
+                    "Database error fetching user rankings - check the logs.",
+                    ephemeral=True,
                 )
                 return
 
@@ -219,11 +223,13 @@ class SkullGroup(app_commands.Group):
             )
 
             await interaction.response.send_message(
-                embed=embed, allowed_mentions=AllowedMentions().none()
+                embed=embed, allowed_mentions=AllowedMentions().none(), ephemeral=True
             )
 
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {str(e)}")
+            await interaction.response.send_message(
+                f"An error occurred: {str(e)}", ephemeral=True
+            )
 
     @app_commands.command(name="hof", description="Get top posts")
     async def hof(self, interaction: Interaction):
@@ -231,7 +237,8 @@ class SkullGroup(app_commands.Group):
             hof_entries = await self.db.get_HOF()
             if not hof_entries:
                 await interaction.response.send_message(
-                    "Database error fetching Hall of Fame - check the logs."
+                    "Database error fetching Hall of Fame - check the logs.",
+                    ephemeral=True,
                 )
                 return
 
@@ -252,11 +259,13 @@ class SkullGroup(app_commands.Group):
             )
 
             await interaction.response.send_message(
-                embed=embed, allowed_mentions=AllowedMentions().none()
+                embed=embed, allowed_mentions=AllowedMentions().none(), ephemeral=True
             )
 
         except Exception as e:
-            await interaction.response.send_message(f"An error occurred: {str(e)}")
+            await interaction.response.send_message(
+                f"An error occurred: {str(e)}", ephemeral=True
+            )
 
 
 skullboard_group = SkullGroup()
