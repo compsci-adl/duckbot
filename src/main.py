@@ -1,6 +1,8 @@
 import os
 import importlib
 import pkgutil
+import asyncio
+import logging
 
 from discord import (
     Intents,
@@ -15,7 +17,9 @@ from discord import (
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from utils import time
 from commands import skullboard
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -42,6 +46,14 @@ class DuckBot(commands.Bot):
         self.skullboard_manager = skullboard.SkullboardManager(
             self
         )  # Initialise SkullboardManager
+        self.prev_day = None
+        self.expiry_loop = None
+
+        # logging
+        logging.basicConfig(
+            filename="DuckBot.log",  # Log file name
+            level=logging.INFO,  # Minimum log level to capture
+        )
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -51,10 +63,10 @@ class DuckBot(commands.Bot):
                 attribute = getattr(module, attribute_name)
                 if isinstance(attribute, app_commands.Group):
                     self.tree.add_command(attribute, guild=Object(GUILD_ID))
-
         if not self.synced:  # Check if slash commands have been synced
             await self.tree.sync(guild=Object(GUILD_ID))
             self.synced = True
+        self.loop.create_task(self.run_expiry_loop())
 
     async def on_ready(self):
         print(f"Say hi to {self.user}!")
@@ -84,13 +96,23 @@ class DuckBot(commands.Bot):
                     message, SKULLBOARD_CHANNEL_ID
                 )
 
+    async def run_expiry_loop(self):
+        """runs every minute checking for expiration"""
+        while True:
+            curr = time.get_current_day()
+            if self.prev_day != curr:
+                await self.skullboard_manager.db.expire()
+                logging.info(f"Expired old data {curr}")
+                self.prev_day = curr
+            await asyncio.sleep(60)  # Wait 1 minute
+
 
 client = DuckBot()
 
 
 @client.tree.command(description="Pong!", guild=Object(GUILD_ID))
 async def ping(interaction: Interaction):
-    await interaction.response.send_message("Pong!")
+    await interaction.response.send_message("Pong!", ephemeral=True)
 
 
 @client.tree.command(

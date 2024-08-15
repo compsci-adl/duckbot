@@ -27,16 +27,10 @@ To get started, please follow these steps:
 
 3. Copy `.env.example` to a new file `.env` and set required environment variables.
 
-4. Navigate to the src directory
+4. Run the bot.
 
     ```bash
-    cd src
-    ```
-
-5. Run the bot.
-
-    ```bash
-    poetry run python main.py
+    poetry run python src/main.py
     ```
 
 ## Contributing
