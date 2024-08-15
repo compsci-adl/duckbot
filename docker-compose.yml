@@ -9,6 +9,8 @@ services:
       - PGID=1000
     networks:
       - csclub
+    volumes:
+      - ~/duckbot/db:/db
 
 networks:
   csclub:
