@@ -52,11 +52,8 @@ class DuckBot(commands.Bot):
         # logging
         logging.basicConfig(
             filename="DuckBot.log",  # Log file name
-            format='%(asctime)s %(levelname)-8s %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            level=logging.INFO  # Minimum log level to capture
+            level=logging.INFO,  # Minimum log level to capture
         )
-        logging.info(f"Started Bot")
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory

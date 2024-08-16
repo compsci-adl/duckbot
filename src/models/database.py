@@ -6,7 +6,6 @@ from typing import List
 
 import aiosqlite
 
-from utils import time
 
 def get_db_folder():
     """Gets the database folder, and creates one if it doesn't exist"""
@@ -77,7 +76,7 @@ class Database:
                     return result
 
                 except Exception:
-                    logging.exception(f"SQLite execution for {self.name}")
+                    logging.exception("SQLite execution")
                     await db.rollback()
                     raise  # Re-raise the exception after logging
 
@@ -91,7 +90,7 @@ class Database:
                 print("Successfully Initialised", self.name)
 
             except Exception:
-                logging.exception(f"Database Initialisation for {self.name}")
+                logging.exception(f"Database Initialisation: {self.name}")
                 await db.rollback()
                 raise  # Re-raise the exception after logging
             return
