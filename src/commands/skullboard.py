@@ -12,8 +12,6 @@ import datetime as dt
 
 from discord import app_commands, Interaction
 
-from commands import database as DB
-
 
 class SkullboardManager:
     """Manages discord activities related to the skullboard"""
