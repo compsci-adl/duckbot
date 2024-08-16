@@ -2,11 +2,22 @@ import os
 import requests
 import re
 
-from discord import Client, Interaction, AllowedMentions, Embed, app_commands
+from discord import (
+    Client,
+    Interaction,
+    AllowedMentions,
+    Embed,
+    Member,
+    app_commands,
+    File,
+)
+import logging
 
+from collections import Counter
 from models.databases.skullboard_database import SkullboardDB
 from utils import time
 from constants.colours import LIGHT_GREY
+from utils.plotting import get_histogram_image
 
 
 class SkullboardManager:
@@ -196,7 +207,7 @@ class SkullGroup(app_commands.Group):
             ephemeral=True,
         )
 
-    @app_commands.command(name="rank", description="Get top users")
+    @app_commands.command(name="rank", description="Get top users (alltime)")
     async def rank(self, interaction: Interaction):
         try:
             rankings = await self.db.get_user_rankings()
@@ -227,6 +238,7 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
+            logging.exception("Rank")
             await interaction.response.send_message(
                 f"An error occurred: {str(e)}", ephemeral=True
             )
@@ -263,6 +275,204 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
+            logging.exception("Hof")
+            await interaction.response.send_message(
+                f"An error occurred: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="week", description="Get top posts (this week)")
+    async def week(self, interaction: Interaction):
+        try:
+            hof_entries = await self.db.get_7_day_post()
+            hof_entries = [
+                (post_id, user_id, channel_id, day, frequency)
+                for post_id, user_id, channel_id, day, frequency in hof_entries
+                if frequency > 0
+            ]
+            if not hof_entries:
+                await interaction.response.send_message(
+                    "Database error or no posts saved - check the logs.",
+                    ephemeral=True,
+                )
+                return
+
+            # Warning: description in embed cannot be longer than 2048 characters
+            msg = ["### Top Posts This Week:"]
+
+            # The post date is unused, may use in future if needed.
+            for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
+                # Format the entries into a readable message
+                line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+                msg.append(line)
+
+            msg = "\n".join(msg)
+            embed = Embed(
+                title="💀💀💀   SKULLS OF THE WEEK   💀💀💀",
+                colour=LIGHT_GREY,
+                description=msg,
+            )
+
+            await interaction.response.send_message(
+                embed=embed, allowed_mentions=AllowedMentions().none(), ephemeral=True
+            )
+
+        except Exception as e:
+            logging.exception("Week")
+            await interaction.response.send_message(
+                f"An error occurred: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="stats", description="Get skullboard stats")
+    @app_commands.choices(
+        timeframe=[
+            app_commands.Choice(name="week", value="w"),
+            app_commands.Choice(name="month", value="m"),
+            app_commands.Choice(name="year", value="y"),
+            app_commands.Choice(name="alltime", value="a"),
+        ]
+    )
+    async def stats(
+        self, interaction: Interaction, timeframe: app_commands.Choice[str]
+    ):
+        try:
+            data = []
+            title = ""
+            if timeframe.value == "w":
+                title += "This Week's "
+                data = await self.db.get_7_day_histogram()
+            elif timeframe.value == "m":
+                title += "This Month's "
+                data = await self.db.get_30_day_histogram()
+            elif timeframe.value == "y":
+                title += "This Year's "
+                data = await self.db.get_365_day_histogram()
+            elif timeframe.value == "a":
+                title += "All-Time "
+                data = await self.db.get_alltime_histogram()
+            else:
+                raise Exception("Invalid option")
+
+            data = [
+                (count, frequency)
+                for count, frequency in data
+                if count > 0 and frequency > 0
+            ]  # only including post/counts for more than 0 reactions and 0 posts
+
+            if not data:
+                await interaction.response.send_message(
+                    "Database error or no posts saved - check the logs.",
+                    ephemeral=True,
+                )
+                return
+            title += "Post Distribution"
+
+            # Collecting stats
+            count = sum([y for x, y in data])  # number of posts in total
+            above_threshold = sum(
+                [y for x, y in data if x >= self.db.threshold]
+            )  # number of posts meeting or exceeding threshold
+            percentile = round(
+                100 * above_threshold / count, 1
+            )  # percentile of posts meeting or exceeding threshold
+
+            msg = [
+                f"### {title}:",
+                f"Count: **{count}**",
+                f"Over threshold: {above_threshold}/{count} = **{percentile}%**",
+            ]
+            msg = "\n".join(msg)
+
+            embed = Embed(
+                title="💀💀💀   SKULL STATS   💀💀💀",
+                colour=LIGHT_GREY,
+                description=msg,
+            )
+
+            # generate a histogram of skull reaction counts for posts in the time period
+            curr_time = time.get_timestamp_str()
+            img_name = (title + " " + curr_time + ".png").replace(" ", "_")
+            img_buf = get_histogram_image(data)
+            img = File(img_buf, filename=img_name, description=title)
+            embed.set_image(url="attachment://" + img_name)
+
+            await interaction.response.send_message(
+                file=img,
+                embed=embed,
+                allowed_mentions=AllowedMentions().none(),
+                ephemeral=True,
+            )
+
+        except Exception as e:
+            logging.exception("Stats")
+            await interaction.response.send_message(
+                f"An error occurred: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="user", description="Get user stats")
+    async def user(self, interaction: Interaction, user: Member):
+        try:
+            user_id = user.id
+            user_name = user.name
+
+            data = await self.db.get_user_rankings(999999)  # get all
+            data = [(id, freq) for id, freq in data if freq > 0]
+
+            if not data:
+                await interaction.response.send_message(
+                    "Database error or no posts saved - check the logs.",
+                    ephemeral=True,
+                )
+                return
+
+            user = [(id, freq) for id, freq in data if id == user_id]
+            if not user:
+                user = [(user_id, 0)]
+            _, user_skull_count = user[0]
+
+            # skull stats
+            count = len(data)  # count the number of users
+            values = [
+                freq for _, freq in data
+            ]  # number of skullboarded posts for each user
+            above_count = len(
+                [1 for val in values if val >= user_skull_count]
+            )  # how many users have as much or more skull reaction posts than the user
+            percentile = round(
+                100 * above_count / count, 1
+            )  # top percentile of skull reactions
+
+            title = f"User Stats for {user_name}"
+
+            msg = [
+                f"### {title}:",
+                f"Skull Posts: **{user_skull_count}**",
+                f"Percentile: {above_count}/{count} = **Top {percentile}% of Users**",
+            ]
+            msg = "\n".join(msg)
+
+            embed = Embed(
+                title="💀💀💀   SKULLER STATS   💀💀💀",
+                colour=LIGHT_GREY,
+                description=msg,
+            )
+
+            # generate a histogram of skull post counts of each user
+            frequency = list(Counter(values).items())
+            img_buf = get_histogram_image(frequency, user_skull_count)
+            curr_time = time.get_timestamp_str()
+            img_name = (title + " " + curr_time + ".png").replace(" ", "_")
+            img = File(img_buf, filename=img_name, description=title)
+            embed.set_image(url="attachment://" + img_name)
+
+            await interaction.response.send_message(
+                file=img,
+                embed=embed,
+                allowed_mentions=AllowedMentions().none(),
+                ephemeral=True,
+            )
+
+        except Exception as e:
+            logging.exception("User")
             await interaction.response.send_message(
                 f"An error occurred: {str(e)}", ephemeral=True
             )
