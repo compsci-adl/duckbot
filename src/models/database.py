@@ -6,6 +6,7 @@ from typing import List
 
 import aiosqlite
 
+
 def get_db_folder():
     """Gets the database folder, and creates one if it doesn't exist"""
     db_dir = Path.cwd() / "db"
