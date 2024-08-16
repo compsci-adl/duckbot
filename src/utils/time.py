@@ -1,6 +1,3 @@
-from datetime import datetime, timezone, timedelta
-import pytz
-
 from datetime import datetime
 import pytz
 
@@ -28,7 +25,7 @@ def get_day_from_timestamp(timestamp: datetime):
 
 
 def get_timestamp_str(timestamp: datetime = datetime.now()):
-    """Generates a string representing the timestamp, in Australian time"""
+    """Generates a string representing the timestamp, in Adelaide time"""
     if timestamp.tzinfo is None:
         timestamp = tz.localize(timestamp)
     else:

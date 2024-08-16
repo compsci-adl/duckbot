@@ -7,9 +7,7 @@ from discord import (
     Interaction,
     AllowedMentions,
     Embed,
-    app_commands,
-    Member,
-    Message,
+    app_commands
 )
 
 from models.databases.skullboard_database import SkullboardDB
