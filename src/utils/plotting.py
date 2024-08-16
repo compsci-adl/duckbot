@@ -71,7 +71,7 @@ def get_histogram_image(data: List[Tuple], highlight=-1):
     ax.set_facecolor((0, 0, 0, 0))
 
     # Set y-axis limits
-    ax.set_ylim(bottom=0, top=min(Y_CLIP, max(y))+1)
+    ax.set_ylim(bottom=0, top=min(Y_CLIP, max(y)) + 1)
 
     # layout configurations
     ax.set_aspect(aspect="auto", adjustable="datalim")
