@@ -2,7 +2,15 @@ import os
 import requests
 import re
 
-from discord import Client, Interaction, AllowedMentions, Embed, app_commands
+from discord import (
+    Client,
+    Interaction,
+    AllowedMentions,
+    Embed,
+    app_commands,
+    Member,
+    Message,
+)
 
 from models.databases.skullboard_database import SkullboardDB
 from utils import time
@@ -202,7 +210,7 @@ class SkullGroup(app_commands.Group):
             rankings = await self.db.get_user_rankings()
             if not rankings:
                 await interaction.response.send_message(
-                    "Database error fetching user rankings - check the logs.",
+                    "Database error or empty user rankings - check the logs.",
                     ephemeral=True,
                 )
                 return
@@ -212,7 +220,7 @@ class SkullGroup(app_commands.Group):
 
             for user_id, frequency in rankings[:10]:
                 # Format the rankings into a readable message
-                line = f"💀 {frequency} : <@!{user_id}>"
+                line = f"💀 {frequency} : <@{user_id}>"
                 msg.append(line)
             msg = "\n".join(msg)
 
@@ -231,13 +239,13 @@ class SkullGroup(app_commands.Group):
                 f"An error occurred: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(name="hof", description="Get top posts")
+    @app_commands.command(name="hof", description="Get top posts (alltime)")
     async def hof(self, interaction: Interaction):
         try:
             hof_entries = await self.db.get_HOF()
             if not hof_entries:
                 await interaction.response.send_message(
-                    "Database error fetching Hall of Fame - check the logs.",
+                    "Database error or empty Hall of Fame - check the logs.",
                     ephemeral=True,
                 )
                 return
@@ -248,7 +256,7 @@ class SkullGroup(app_commands.Group):
             # The post date is unused, may use in future if needed.
             for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
                 # Format the HoF entries into a readable message
-                line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@!{user_id}>"
+                line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
                 msg.append(line)
 
             msg = "\n".join(msg)
