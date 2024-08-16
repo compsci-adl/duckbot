@@ -23,37 +23,6 @@ from discord import app_commands, Interaction
 from commands import database as DB
 
 
-# Adelaide timezone (UTC+9:30)
-tz = timezone(timedelta(hours=9.5))
-
-
-# Gets current day since 1970
-def get_current_day():
-    # Converts to Adelaide time
-    now = datetime.now(tz)
-    epoch = datetime(1970, 1, 1, tzinfo=tz)
-    days_since_epoch = (now - epoch).days
-    return days_since_epoch
-
-
-# Gets current day of timestamp since 1970
-def get_day_from_timestamp(timestamp: datetime):
-    # Converts to Adelaide time
-    epoch = datetime(1970, 1, 1, tzinfo=tz)
-    days_since_epoch = (timestamp - epoch).days
-    return days_since_epoch
-
-
-class SkullBoardDB:
-    db: DB.DataBase = None
-    threshold: int = -1
-    guild_id: int = -1
-
-from models.databases.skullboard_database import SkullboardDB
-from utils import time
-from constants.colours import LIGHT_GREY
-
-
 class SkullboardManager:
     """Manages discord activities related to the skullboard"""
 
