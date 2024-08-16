@@ -16,6 +16,7 @@ pathlib = "^1.0.1"
 aiosqlite = "^0.20.0"
 schedule = "^1.2.2"
 pytz = "^2024.1"
+matplotlib = "^3.9.2"
 
 [build-system]
 requires = ["poetry-core"]
