@@ -72,7 +72,7 @@ class SkullboardDB(Database):
     async def get_7_day_post(self, top_x=5):
         """Returns top skullboard posts this week"""
         sql = SkullSQL.day_7_post
-        return await self.execute(sql, (top_x), "all")
+        return await self.execute(sql, (top_x,), "all")
 
     @Database.crash_handler
     async def get_user_rankings(self, top_x=10):
