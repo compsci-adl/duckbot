@@ -212,11 +212,7 @@ class SkullGroup(app_commands.Group):
         try:
             rankings = await self.db.get_user_rankings()
             if not rankings:
-                await interaction.response.send_message(
-                    "Database error or empty user rankings - check the logs.",
-                    ephemeral=True,
-                )
-                return
+                raise Exception("Database Error")
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Users of All-Time:\n"]
@@ -238,9 +234,10 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
-            logging.exception("Rank")
+            logging.exception(f"User {interaction.message.author.name} called Rank()")
             await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
+                f"Error:\n Either no data was available for this command, or a serious error occurred.\n{str(e)}",
+                ephemeral=True,
             )
 
     @app_commands.command(name="hof", description="Get top posts (all-time)")
@@ -248,11 +245,7 @@ class SkullGroup(app_commands.Group):
         try:
             hof_entries = await self.db.get_HOF()
             if not hof_entries:
-                await interaction.response.send_message(
-                    "Database error or empty Hall of Fame - check the logs.",
-                    ephemeral=True,
-                )
-                return
+                raise Exception("Database Error")
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Posts of All-Time:"]
@@ -275,9 +268,10 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
-            logging.exception("Hof")
+            logging.exception(f"User {interaction.message.author.name} called Hof()")
             await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
+                f"Error:\n Either no data was available for this command, or a serious error occurred.\n{str(e)}",
+                ephemeral=True,
             )
 
     @app_commands.command(name="week", description="Get top posts (this week)")
@@ -290,11 +284,7 @@ class SkullGroup(app_commands.Group):
                 if frequency > 0
             ]
             if not hof_entries:
-                await interaction.response.send_message(
-                    "Database error or no posts saved - check the logs.",
-                    ephemeral=True,
-                )
-                return
+                raise Exception("Database Error")
 
             # Warning: description in embed cannot be longer than 2048 characters
             msg = ["### Top Posts This Week:"]
@@ -317,9 +307,10 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
-            logging.exception("Week")
+            logging.exception(f"User {interaction.message.author.name} called Week()")
             await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
+                f"Error:\n Either no data was available for this command, or a serious error occurred.\n{str(e)}",
+                ephemeral=True,
             )
 
     @app_commands.command(name="stats", description="Get skullboard stats")
@@ -359,11 +350,8 @@ class SkullGroup(app_commands.Group):
             ]  # only including post/counts for more than 0 reactions and 0 posts
 
             if not data:
-                await interaction.response.send_message(
-                    "Database error or no posts saved - check the logs.",
-                    ephemeral=True,
-                )
-                return
+                raise Exception("Database Error")
+
             title += "Post Distribution"
 
             # Collecting stats
@@ -403,26 +391,25 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
-            logging.exception("Stats")
+            logging.exception(
+                f"User {interaction.message.author.name} called Stats(timeframe={timeframe.value})"
+            )
             await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
+                f"Error:\n Either no data was available for this command, or a serious error occurred.\n{str(e)}",
+                ephemeral=True,
             )
 
     @app_commands.command(name="user", description="Get user stats")
-    async def user(self, interaction: Interaction, user: Member):
+    async def user(self, interaction: Interaction, member: Member):
         try:
-            user_id = user.id
-            user_name = user.name
+            user_id = member.id
+            user_name = member.name
 
             data = await self.db.get_user_rankings(999999)  # get all
             data = [(id, freq) for id, freq in data if freq > 0]
 
             if not data:
-                await interaction.response.send_message(
-                    "Database error or no posts saved - check the logs.",
-                    ephemeral=True,
-                )
-                return
+                raise Exception("Database Error")
 
             user = [(id, freq) for id, freq in data if id == user_id]
             if not user:
@@ -470,9 +457,12 @@ class SkullGroup(app_commands.Group):
             )
 
         except Exception as e:
-            logging.exception("User")
+            logging.exception(
+                f"User {interaction.message.author.name} called user(member={member.name})"
+            )
             await interaction.response.send_message(
-                f"An error occurred: {str(e)}", ephemeral=True
+                f"Error:\n Either no data was available for this command, or a serious error occurred.\n{str(e)}",
+                ephemeral=True,
             )
 
 
