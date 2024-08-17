@@ -195,6 +195,9 @@ class SkullGroup(app_commands.Group):
         cmds = [
             "`/skull rank` to view current user rankings",
             "`/skull hof` to view the Hall of Fame",
+            "`/skull week` to view the top posts of the week",
+            "`/skull stats` to view the distribution of skullboard posts from the past week, month, year, or all-time",
+            "`/skull user` to compare the amount of skullboard posts a user has against other users",
         ]
         cmds = "\n".join(cmds)
 
