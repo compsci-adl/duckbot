@@ -207,7 +207,7 @@ class SkullGroup(app_commands.Group):
             ephemeral=True,
         )
 
-    @app_commands.command(name="rank", description="Get top users (alltime)")
+    @app_commands.command(name="rank", description="Get top users (all-time)")
     async def rank(self, interaction: Interaction):
         try:
             rankings = await self.db.get_user_rankings()
@@ -243,7 +243,7 @@ class SkullGroup(app_commands.Group):
                 f"An error occurred: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(name="hof", description="Get top posts (alltime)")
+    @app_commands.command(name="hof", description="Get top posts (all-time)")
     async def hof(self, interaction: Interaction):
         try:
             hof_entries = await self.db.get_HOF()
@@ -430,16 +430,14 @@ class SkullGroup(app_commands.Group):
             _, user_skull_count = user[0]
 
             # skull stats
-            count = len(data)  # count the number of users
-            values = [
-                freq for _, freq in data
-            ]  # number of skullboarded posts for each user
-            above_count = len(
-                [1 for val in values if val >= user_skull_count]
-            )  # how many users have as much or more skull reaction posts than the user
-            percentile = round(
-                100 * above_count / count, 1
-            )  # top percentile of skull reactions
+            # count the number of users
+            count = len(data)
+            # number of skullboarded posts for each user
+            values = [freq for _, freq in data]
+            # how many users have as much or more skull reaction posts than the user
+            above_count = len([1 for val in values if val >= user_skull_count])
+            # top percentile of skull reactions
+            percentile = round(100 * above_count / count, 1)
 
             title = f"User Stats for {user_name}"
 

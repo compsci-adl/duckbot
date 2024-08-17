@@ -1,24 +1,37 @@
 import io
-
 from cgitb import grey
-import matplotlib.pyplot as plt
 from typing import List, Tuple
 
+import matplotlib.pyplot as plt
 
-Y_CLIP = 20  # maximum height of plot that can be displayed for readability purposes
 GREY = (0.5, 0.5, 0.5, 1)
 WHITE = (1, 1, 1, 1)
 
+Y_LIM_DEFAULT = 20
 
-def get_histogram_image(data: List[Tuple], highlight=-1):
-    """Generates an image based on histogram data
-    Data is a list histogram data in the form of (x,y), where:
-    - x is the 'count' or 'bucket'
-    - y is the frequency
 
-    highlight is a selector variable for the two skullboard functions which use it.
-    When it is defined with a non negative value, it will draw a vertical line at entry x, and modify the x/y labels
+def get_histogram_image(
+    data: List[Tuple],
+    xlabel: str = "Count",
+    ylabel: str = "Frequency",
+    vline: int = -1,
+    y_clip: int = Y_LIM_DEFAULT,
+) -> io.BytesIO:
+    """Generates an image based on histogram data.
+
+    Args:
+        data: List of histogram data in the form of [(x,y),(x,y),...,], where:
+            - x is the 'count' or 'bucket'
+            - y is the frequency
+        xlabel: Label for the x-axis (default is 'Count').
+        ylabel: Label for the y-axis (default is 'Frequency').
+        vline: X position to place a vertical line (default is -1, meaning no line).
+        y_clip: Maximum height of the plot for readability (default is Y_LIM_DEFAULT).
+
+    Returns:
+        A BytesIO object containing the image.
     """
+
     # Unzip the data into x and y values
     x, y = zip(*data)
 
@@ -29,11 +42,10 @@ def get_histogram_image(data: List[Tuple], highlight=-1):
     bars = ax.bar(x, y, tick_label=x, color=WHITE)
 
     # Add text annotations to the top of the bars
-    bar_color = bars[0].get_facecolor()
     for bar in bars:
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            min(bar.get_height(), Y_CLIP) + 0.1,
+            min(bar.get_height(), y_clip) + 0.1,
             round(bar.get_height(), 1),
             horizontalalignment="center",
             color=GREY,
@@ -41,14 +53,12 @@ def get_histogram_image(data: List[Tuple], highlight=-1):
         )
 
     # add a vertical line to the plot if selected
-    if highlight > 0:
-        plt.axvline(x=highlight, ymin=0, linewidth=3, color="r", linestyle="--")
+    if vline >= 0:
+        plt.axvline(x=vline, ymin=0, linewidth=3, color="r", linestyle="--")
 
     # set x/y labels
-    xlabel = "Reactions" if highlight == -1 else "Posts"
-    ylabel = "Posts" if highlight == -1 else "Users"
-    ax.set_xlabel(f"Number of {xlabel}", color=WHITE)
-    ax.set_ylabel(f"Number of {ylabel}", color=WHITE)
+    ax.set_xlabel(xlabel, color=WHITE)
+    ax.set_ylabel(ylabel, color=WHITE)
 
     # set visibilities of borders
     ax.spines["top"].set_visible(False)
@@ -71,7 +81,7 @@ def get_histogram_image(data: List[Tuple], highlight=-1):
     ax.set_facecolor((0, 0, 0, 0))
 
     # Set y-axis limits
-    ax.set_ylim(bottom=0, top=min(Y_CLIP, max(y)) + 1)
+    ax.set_ylim(bottom=0, top=min(y_clip, max(y)) + 1)
 
     # layout configurations
     ax.set_aspect(aspect="auto", adjustable="datalim")
