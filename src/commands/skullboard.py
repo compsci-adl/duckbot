@@ -1,11 +1,10 @@
 import logging
 import os
 import re
-import requests
+from collections import Counter
+from functools import wraps
 from io import BytesIO
 from typing import Callable, Awaitable
-from functools import wraps
-from collections import Counter
 
 from discord import (
     AllowedMentions,
@@ -18,6 +17,7 @@ from discord import (
 )
 from discord.errors import NotFound
 from discord.utils import MISSING
+import requests
 
 from constants.colours import LIGHT_GREY
 from utils import time
