@@ -287,7 +287,9 @@ class SkullGroup(app_commands.Group):
         response = Response(message=skullboard_info, embed=embed)
         return response
 
-    @app_commands.command(name="rank", description="Get top users (all-time)")
+    @app_commands.command(
+        name="rank", description="Get top Skullboard users (all-time)"
+    )
     @interaction_handler
     async def rank(self, interaction: Interaction):
         rankings = await self.db.get_user_rankings()
@@ -311,7 +313,7 @@ class SkullGroup(app_commands.Group):
         response = Response(embed=embed)
         return response
 
-    @app_commands.command(name="hof", description="Get top posts (all-time)")
+    @app_commands.command(name="hof", description="Get top Skullboard posts (all-time)")
     @interaction_handler
     async def hof(self, interaction: Interaction) -> Response:
         hof_entries = await self.db.get_HOF()
@@ -368,7 +370,10 @@ class SkullGroup(app_commands.Group):
         response = Response(embed=embed)
         return response
 
-    @app_commands.command(name="stats", description="Get skullboard stats")
+    @app_commands.command(
+        name="stats",
+        description="Get Skullboard post distributions for week/month/year/all-time",
+    )
     @app_commands.choices(
         timeframe=[
             app_commands.Choice(name="week", value="w"),
@@ -453,7 +458,7 @@ class SkullGroup(app_commands.Group):
         response = Response(img=img, embed=embed)
         return response
 
-    @app_commands.command(name="user", description="Get user stats")
+    @app_commands.command(name="user", description="Get Skullboard stats for a user")
     @interaction_handler
     async def user(self, interaction: Interaction, member: Member) -> Response:
         user_id = member.id
