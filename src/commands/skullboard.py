@@ -1,11 +1,10 @@
 import logging
 import os
 import re
-import requests
+from collections import Counter
+from functools import wraps
 from io import BytesIO
 from typing import Callable, Awaitable
-from functools import wraps
-from collections import Counter
 
 from discord import (
     AllowedMentions,
@@ -18,6 +17,7 @@ from discord import (
 )
 from discord.errors import NotFound
 from discord.utils import MISSING
+import requests
 
 from constants.colours import LIGHT_GREY
 from utils import time
@@ -245,9 +245,7 @@ class SkullGroup(app_commands.Group):
                 The exception clauses suppresses this particular error message from being sent to the client or logged, since it does not affect the final message sent.
                 """
                 IGNORE_404_API_BUG_ERROR_CODE = 10062
-                if e.code == IGNORE_404_API_BUG_ERROR_CODE:  # Supress API bug error
-                    pass  # Ignore the specific error
-                else:
+                if e.code != IGNORE_404_API_BUG_ERROR_CODE:  # Supress API bug error
                     raise  # Re-raise other NotFound errors
             except Exception as e:
                 # Log the exception and send an error message to the user
