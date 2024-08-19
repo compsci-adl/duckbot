@@ -415,12 +415,10 @@ class SkullGroup(app_commands.Group):
 
         # Collecting stats
         count = sum([y for x, y in data])  # number of posts in total
-        above_threshold = sum(
-            [y for x, y in data if x >= self.db.threshold]
-        )  # number of posts meeting or exceeding threshold
-        percentile = round(
-            100 * above_threshold / count, 1
-        )  # percentile of posts meeting or exceeding threshold
+        # number of posts meeting or exceeding threshold
+        above_threshold = sum([y for x, y in data if x >= self.db.threshold])
+        # percentile of posts meeting or exceeding threshold
+        percentile = round(100 * above_threshold / count, 1)
 
         msg = [
             f"### {title}:",
