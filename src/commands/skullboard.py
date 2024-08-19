@@ -163,8 +163,9 @@ class SkullboardManager:
             format_type = str(message.stickers[0].format).split(".", maxsplit=1)[-1]
 
             sticker_id = message.stickers[0].id
-            sticker_url = f"https://media.discordapp.net/stickers/{
-                    sticker_id}.{format_type}"
+            sticker_url = (
+                f"https://media.discordapp.net/stickers/{sticker_id}.{format_type}"
+            )
             embed.set_image(url=sticker_url)
 
         if message.attachments:
@@ -250,12 +251,10 @@ class SkullGroup(app_commands.Group):
             except Exception as e:
                 # Log the exception and send an error message to the user
                 logging.exception(
-                    f"User {interaction.user.name} triggered an error in {
-                        func.__name__} with args: {args} and kwargs: {kwargs}"
+                    f"User {interaction.user.name} triggered an error in {func.__name__} with args: {args} and kwargs: {kwargs}"
                 )
                 await interaction.followup.send(
-                    f"Error:\nEither no data was available for this command, or a serious error occurred.\nType: {
-                        str(e)}",
+                    f"Error:\nEither no data was available for this command, or a serious error occurred.\nType: {str(e)}",
                     ephemeral=True,
                 )
 
@@ -323,8 +322,7 @@ class SkullGroup(app_commands.Group):
         # The post date is unused, may use in future if needed.
         for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
             # Format the HoF entries into a readable message
-            line = f"💀 {frequency} : https://discord.com/channels/{
-                self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+            line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
             msg.append(line)
 
         msg = "\n".join(msg)
@@ -354,8 +352,7 @@ class SkullGroup(app_commands.Group):
         # The post date is unused, may use in future if needed.
         for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
             # Format the entries into a readable message
-            line = f"💀 {frequency} : https://discord.com/channels/{
-                self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+            line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
             msg.append(line)
 
         msg = "\n".join(msg)
@@ -486,8 +483,7 @@ class SkullGroup(app_commands.Group):
         msg = [
             f"### {title}:",
             f"Skullboard Posts: **{user_skull_count}**",
-            f"Percentile: {
-                above_count}/{count} = **Top {percentile}% of Users**",
+            f"Percentile: {above_count}/{count} = **Top {percentile}% of Users**",
         ]
         msg = "\n".join(msg)
 
