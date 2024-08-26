@@ -1,6 +1,8 @@
 import os
 import importlib
 import pkgutil
+import asyncio
+import logging
 
 from discord import (
     Intents,
@@ -17,6 +19,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from commands import gemini, skullboard
+from utils import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,6 +28,7 @@ load_dotenv()
 GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
+TENOR_API_KEY = os.environ["TENOR_API_KEY"]
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
@@ -42,6 +46,17 @@ class DuckBot(commands.Bot):
         self.skullboard_manager = skullboard.SkullboardManager(
             self
         )  # Initialise SkullboardManager
+        self.prev_day = None
+        self.expiry_loop = None
+
+        # logging
+        logging.basicConfig(
+            filename="DuckBot.log",  # Log file name
+            format="%(asctime)s %(levelname)-8s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            level=logging.INFO,  # Minimum log level to capture
+        )
+        logging.info(f"Started Bot")
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
@@ -56,10 +71,10 @@ class DuckBot(commands.Bot):
                 attribute = getattr(module, attribute_name)
                 if isinstance(attribute, app_commands.Group):
                     self.tree.add_command(attribute, guild=Object(GUILD_ID))
-
         if not self.synced:  # Check if slash commands have been synced
             await self.tree.sync(guild=Object(GUILD_ID))
             self.synced = True
+        self.loop.create_task(self.run_expiry_loop())
 
     async def on_ready(self):
         print(f"Say hi to {self.user}!")
@@ -89,13 +104,29 @@ class DuckBot(commands.Bot):
                     message, SKULLBOARD_CHANNEL_ID
                 )
 
+    async def run_expiry_loop(self):
+        """runs every minute checking for expiration"""
+        while True:
+            curr = time.get_current_day()
+            if self.prev_day != curr:
+                await self.skullboard_manager.db.expire()
+                logging.info(f"Expired old data {curr}")
+                self.prev_day = curr
+            await asyncio.sleep(60)  # Wait 1 minute
+
 
 client = DuckBot()
 
 
 @client.tree.command(description="Pong!", guild=Object(GUILD_ID))
 async def ping(interaction: Interaction):
-    await interaction.response.send_message("Pong!")
+    await interaction.response.send_message("Pong!", ephemeral=True)
+
+@client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
+async def ask_gemini(interaction: Interaction, query: str | None, file: Attachment | None):
+
+    bot_response = await client.gemini_model.query(message=query, attachment=file, author=interaction.user)
+    await interaction.response.send_message(bot_response)
 
 
 @client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
