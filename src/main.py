@@ -11,6 +11,7 @@ from discord import (
     Color,
     Message,
     RawReactionActionEvent,
+    Attachment
 )
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -44,7 +45,7 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            "models/gemini-1.5-flash-001", "data/duckbot_train_data.csv"
+            "models/gemini-1.5-flash-001", "data/duckbot_train_data.csv", self
         )
 
     async def setup_hook(self):
@@ -98,8 +99,9 @@ async def ping(interaction: Interaction):
 
 
 @client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
-async def ask_gemini(interaction: Interaction, query: str | None):
-    bot_response = client.gemini_model.query(query, interaction.user)
+async def ask_gemini(interaction: Interaction, query: str | None, file: Attachment | None):
+
+    bot_response = await client.gemini_model.query(message=query, attachment=file, author=interaction.user)
     await interaction.response.send_message(bot_response)
 
 
@@ -138,7 +140,9 @@ async def help(interaction: Interaction):
 @client.event
 async def on_message(message: Message):
     if client.user.mentioned_in(message) and message.author != client.user:
-        bot_response = client.gemini_model.query(message.content, message.author)
+        print(message.attachments)
+        attachment = message.attachments[0] if message.attachments else None
+        bot_response = await client.gemini_model.query(author=message.author, message=message.clean_content, attachment=attachment)
         await message.reply(bot_response)
 
 
