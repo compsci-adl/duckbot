@@ -6,6 +6,9 @@
 # Database
 /db
 
+# Temp media files
+/temp
+
 # VS code
 /.vscode
 

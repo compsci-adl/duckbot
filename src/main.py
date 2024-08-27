@@ -124,16 +124,14 @@ async def ping(interaction: Interaction):
 
 @client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
 async def ask_gemini(interaction: Interaction, query: str | None, file: Attachment | None):
-
-    bot_response = await client.gemini_model.query(message=query, attachment=file, author=interaction.user)
-    await interaction.response.send_message(bot_response)
-
-
-@client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
-async def ask_gemini(interaction: Interaction, query: str | None, file: Attachment | None):
-
-    bot_response = await client.gemini_model.query(message=query, attachment=file, author=interaction.user)
-    await interaction.response.send_message(bot_response)
+    await interaction.response.defer()
+    try:
+        query = "" if query == None else query
+        bot_response = await client.gemini_model.query(message=query, attachment=file, author=interaction.user)
+        await interaction.followup.send(embed=bot_response)
+    except Exception as e:
+        print(e)
+        await interaction.followup.send(embed=Embed(title="Error", description="There was an error processing your request.", color=0xFF3333))
 
 
 @client.tree.command(
@@ -173,8 +171,9 @@ async def on_message(message: Message):
     if client.user.mentioned_in(message) and message.author != client.user:
         print(message.attachments)
         attachment = message.attachments[0] if message.attachments else None
+
         bot_response = await client.gemini_model.query(author=message.author, message=message.clean_content, attachment=attachment)
-        await message.reply(bot_response)
+        await message.reply(embed=bot_response)
 
 
 # Add the token of bot
