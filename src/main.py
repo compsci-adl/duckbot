@@ -61,8 +61,10 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            model_name="models/gemini-1.5-flash-001", data_csv_path="src/data/duckbot_train_data.csv", bot=self,
-            api_key=GEMINI_API_KEY
+            model_name="models/gemini-1.5-flash-001",
+            data_csv_path="src/data/duckbot_train_data.csv",
+            bot=self,
+            api_key=GEMINI_API_KEY,
         )
 
     async def setup_hook(self):
@@ -181,7 +183,9 @@ async def help(interaction: Interaction):
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
-    if (client.user.mentioned_in(message) or "=duck" in message.clean_content) and message.author != client.user:
+    if (
+        client.user.mentioned_in(message) or "=duck" in message.clean_content
+    ) and message.author != client.user:
         attachment = message.attachments[0] if message.attachments else None
 
         bot_response = await client.gemini_model.query(
