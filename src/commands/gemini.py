@@ -238,8 +238,9 @@ def delete_files():
     """Delete all attachment files"""
 
     for file in genai.list_files():
-        
+
         genai.delete_file(file.name)
+
 
 def is_valid_ext_size(file) -> Errors:
     """Helper function to check if the file passed as input has a valid content type and acceptable size
