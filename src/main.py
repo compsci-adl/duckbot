@@ -29,6 +29,7 @@ GUILD_ID = int(os.environ["GUILD_ID"])
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 TENOR_API_KEY = os.environ["TENOR_API_KEY"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
@@ -60,7 +61,8 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            "models/gemini-1.5-flash-001", "src/data/duckbot_train_data.csv", self
+            model_name="models/gemini-1.5-flash-001", data_csv_path="src/data/duckbot_train_data.csv", bot=self,
+            api_key=GEMINI_API_KEY
         )
 
     async def setup_hook(self):

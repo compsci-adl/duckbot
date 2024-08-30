@@ -36,18 +36,19 @@ ERROR_MESSAGES = {
 
 
 class GeminiBot:
-    def __init__(self, model_name, data_csv_path, bot):
-        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+    def __init__(self, model_name, data_csv_path, bot, api_key):
+        genai.configure(api_key=api_key)
 
         system_instruction = (
             "You are duckbot, the official discord bot for the Computer Science Club of the University of Adelaide. "
             "Your main purpose is to answer CS questions and FAQs by users in a respectful and helpful manner, but don't be too nice. "
             "Keep emojis to a minimum. "
-            "Try to keep your answers similar to the examples provided below. "
+            "Keep your answers less than 1024 characters and similar to the examples provided below. "
             "Do not modify any of the links below if you send it as a response. "
             # "Only respond to images if they are relevant to the question asked or your purpose. "
             "If someone asks a CS related question, answer it in a technical manner. "
             "Don't be cringe. "
+            "Do not hallucinate. "
             "Consider the following examples for the FAQs: \n"
         )
 
