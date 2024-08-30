@@ -178,9 +178,9 @@ class GeminiBot:
 
         # The chat instance maintains a chat convo by sending all previous messages as input every time
         # This can easily exhaust the free tier of Gemini API, so choosing to clear the history every 50 messages
-        # if len(self.chat.history) >= 50:
-        #     self.chat.history = []
-        delete_files()
+        if len(self.chat.history) >= 50:
+            self.chat.history = []
+            delete_files()
 
         return response_embeds
 

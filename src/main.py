@@ -15,6 +15,7 @@ from discord import (
     RawReactionActionEvent,
     Attachment,
 )
+from discord.errors import NotFound
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -131,15 +132,31 @@ async def ping(interaction: Interaction):
 async def ask_gemini(
     interaction: Interaction, query: str | None, file: Attachment | None
 ):
-    await interaction.response.defer()
+
     try:
+        await interaction.response.defer()
         query = "" if query == None else query
         bot_response = await client.gemini_model.query(
             message=query, attachment=file, author=interaction.user
         )
         print(bot_response)
         await interaction.followup.send(embeds=bot_response)
+
+    except NotFound as e:
+        """
+        As implemented in skullboard by Josh
+        Note that for the commands which use interaction.response.defer() method, sporadic 404 errors will be occassionally raised.
+        This is a known bug with the discord API/client https://github.com/discord/discord-api-docs/issues/5558
+        The exception clauses suppresses this particular error message from being sent to the client or logged, since it does not affect the final message sent.
+        """
+        IGNORE_404_API_BUG_ERROR_CODE = 10062
+        if e.code != IGNORE_404_API_BUG_ERROR_CODE:  # Supress API bug error
+            raise  # Re-raise other NotFound errors
+
     except Exception as e:
+        logging.exception(
+            f"User {interaction.user.name} triggered the following error while calling Gemini: {e.message}."
+        )
         await interaction.followup.send(
             embed=Embed(
                 title="Error",
