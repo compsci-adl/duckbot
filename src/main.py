@@ -13,7 +13,7 @@ from discord import (
     Color,
     Message,
     RawReactionActionEvent,
-    Attachment
+    Attachment,
 )
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -60,7 +60,7 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            "models/gemini-1.5-flash-001", "data/duckbot_train_data.csv", self
+            "models/gemini-1.5-flash-001", "src/data/duckbot_train_data.csv", self
         )
 
     async def setup_hook(self):
@@ -122,16 +122,27 @@ client = DuckBot()
 async def ping(interaction: Interaction):
     await interaction.response.send_message("Pong!", ephemeral=True)
 
+
 @client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
-async def ask_gemini(interaction: Interaction, query: str | None, file: Attachment | None):
+async def ask_gemini(
+    interaction: Interaction, query: str | None, file: Attachment | None
+):
     await interaction.response.defer()
     try:
         query = "" if query == None else query
-        bot_response = await client.gemini_model.query(message=query, attachment=file, author=interaction.user)
-        await interaction.followup.send(embed=bot_response)
+        bot_response = await client.gemini_model.query(
+            message=query, attachment=file, author=interaction.user
+        )
+        print(bot_response)
+        await interaction.followup.send(embeds=bot_response)
     except Exception as e:
-        print(e)
-        await interaction.followup.send(embed=Embed(title="Error", description="There was an error processing your request.", color=0xFF3333))
+        await interaction.followup.send(
+            embed=Embed(
+                title="Error",
+                description="There was an error processing your request.",
+                color=0xFF3333,
+            )
+        )
 
 
 @client.tree.command(
@@ -168,12 +179,13 @@ async def help(interaction: Interaction):
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
-    if client.user.mentioned_in(message) and message.author != client.user:
-        print(message.attachments)
+    if (client.user.mentioned_in(message) or "=duck" in message.clean_content) and message.author != client.user:
         attachment = message.attachments[0] if message.attachments else None
 
-        bot_response = await client.gemini_model.query(author=message.author, message=message.clean_content, attachment=attachment)
-        await message.reply(embed=bot_response)
+        bot_response = await client.gemini_model.query(
+            author=message.author, message=message.clean_content, attachment=attachment
+        )
+        await message.reply(embeds=bot_response, mention_author=False)
 
 
 # Add the token of bot
