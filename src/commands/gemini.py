@@ -1,13 +1,16 @@
 import csv
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
 import urllib.request
 import re
 import os
+from pathlib import Path
 import glob
 import os.path
 from enum import Enum
+import tempfile
+
 from discord import Embed
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
 
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
@@ -188,6 +191,8 @@ async def upload_or_return_file_ref(attachment) -> (File, Errors):
 
     file_name = os.path.splitext(attachment.filename)[0]
 
+    # Path("src/temp").mkdir(exist_ok=True)
+
     try:
         # If image is already uploaded to
         file_ref = return_genai_file_ref(file_name)
@@ -195,19 +200,23 @@ async def upload_or_return_file_ref(attachment) -> (File, Errors):
         if file_ref:
             return file_ref, None
 
-        # If file exists in the server but not uploaded to Gemini
-        elif os.path.isfile(f"src/temp/{attachment.filename}"):
-            file_ref = genai.upload_file(
-                path=f"src/temp/{attachment.filename}", display_name=file_name
-            )
-            return file_ref, None
+        # # If file exists in the server but not uploaded to Gemini
+        # elif os.path.isfile(f"src/temp/{attachment.filename}"):
+        #     file_ref = genai.upload_file(
+        #         path=f"src/temp/{attachment.filename}", display_name=file_name
+        #     )
+        #     return file_ref, None
 
         # If new image
         else:
-            await attachment.save(f"src/temp/{attachment.filename}")
-            file_ref = genai.upload_file(
-                path=f"src/temp/{attachment.filename}", display_name=file_name
-            )
+            with tempfile.TemporaryDirectory() as temp:
+
+                await attachment.save(f"{temp}/{attachment.filename}")
+
+                file_ref = genai.upload_file(
+                    path=f"{temp}/{attachment.filename}", display_name=file_name
+                )
+
             return file_ref, None
 
     except Exception as e:
@@ -228,22 +237,9 @@ def return_genai_file_ref(file_name):
 def delete_files():
     """Delete all attachment files"""
 
-    files = glob.glob("src/temp/*")
-    for file in files:
-
-        # Deleting from Gemini API
-        file_name = os.path.splitext(file.split("/")[-1])[0]
-        file_ref = return_genai_file_ref(file_name)
-
-        if file_ref is not None:
-            try:
-                genai.delete_file(file_ref)
-            except:
-                pass
-
-        # Deleting from host
-        os.remove(file)
-
+    for file in genai.list_files():
+        
+        genai.delete_file(file.name)
 
 def is_valid_ext_size(file) -> Errors:
     """Helper function to check if the file passed as input has a valid content type and acceptable size
