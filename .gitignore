@@ -4,10 +4,10 @@
 /src/config.json
 
 # Database
-src/db
+/src/db
 
 # Temp media files
-src/temp
+/src/temp
 
 # VS code
 /.vscode
