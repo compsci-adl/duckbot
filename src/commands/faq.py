@@ -76,8 +76,8 @@ class FNGGroup(app_commands.Group):
             return
 
         # Determining if games night is on the same day as day of function call
-        time_difference = date_stack[-1].date() - curr_date.date()
-        if time_difference.days <= 1:
+        time_difference = date_stack[-1] - curr_date
+        if time_difference.days < 1:
             time_difference_hours = round(time_difference.seconds / 3600, 2)
             if time_difference_hours < 1:
                 await interaction.response.send_message(
@@ -90,7 +90,7 @@ class FNGGroup(app_commands.Group):
             return
 
         # Determining if games night is on the next day of function call
-        if time_difference.days < 2 and time_difference.days > 1:
+        if time_difference.days < 2 and time_difference.days >= 1:
             await interaction.response.send_message(
                 f"The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
             )
