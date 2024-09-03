@@ -5,12 +5,15 @@ import os
 from pathlib import Path
 import glob
 import os.path
-from enum import Enum
+from enum import IntEnum
 import tempfile
+import logging
 
+from constants.colours import LIGHT_YELLOW
 from discord import Embed
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
+from google.api_core.exceptions import ServiceUnavailable
 
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
@@ -21,12 +24,18 @@ SAFETY_SETTINGS = {
 
 
 # Error codes are implemented just to give the user an accurate error message
-class Errors(Enum):
+class Errors(IntEnum):
     FILE_UPLOAD_ERR = 0
     FILE_SIZE_ERR = 1
     FILE_TYPE_ERR = 2
     GEMINI_ERR = 3
     GEMINI_RESPONSE_TOO_LONG_ERR = 4
+    GEMINI_PERMISSION_DENIED = 403
+    GEMINI_NOT_FOUND = 404
+    GEMINI_RESOURCE_EXHAUSTED = 429
+    GEMINI_INTERNAL = 500
+    GEMINI_UNAVAILABLE = 503
+    GEMINI_DEADLINE_EXCEEDED = 504
 
 
 ERROR_MESSAGES = {
@@ -35,6 +44,12 @@ ERROR_MESSAGES = {
     Errors.FILE_TYPE_ERR: "Unsupported file: Duckbot only supports images and audio files at the moment.",
     Errors.GEMINI_ERR: "Gemini couldn't process the request.",
     Errors.GEMINI_RESPONSE_TOO_LONG_ERR: "The response was too long!",
+    Errors.GEMINI_PERMISSION_DENIED: "The Gemini API key does not have the required permissions to perform this action!",
+    Errors.GEMINI_NOT_FOUND: "There was a problem fetching the requested resource (media file) from Gemini API.",
+    Errors.GEMINI_RESOURCE_EXHAUSTED: "Gemini's free tier rate limit has been exceeded. Take a break!",
+    Errors.GEMINI_INTERNAL: "Gemini ran into an error processing your query! Try shortening your query.",
+    Errors.GEMINI_UNAVAILABLE: "Gemini is temporarily unavailable. Please try again in a while.",
+    Errors.GEMINI_DEADLINE_EXCEEDED: "Gemini was unable to process a response as the query was too large. Please shorten your query and try again.",
 }
 
 
@@ -43,12 +58,11 @@ class GeminiBot:
         genai.configure(api_key=api_key)
 
         system_instruction = (
-            "You are duckbot, the official discord bot for the Computer Science Club of the University of Adelaide. "
-            "Your main purpose is to answer CS questions and FAQs by users in a respectful and helpful manner, but don't be too nice. "
+            "You are DuckBot, the official discord bot for the Computer Science Club of the University of Adelaide. "
+            "Your main purpose is to answer CS questions and FAQs by users in a respectful and helpful manner. "
             "Keep emojis to a minimum. "
             "Keep your answers less than 1024 characters and similar to the examples provided below. "
             "Do not modify any of the links below if you send it as a response. "
-            # "Only respond to images if they are relevant to the question asked or your purpose. "
             "If someone asks a CS related question, answer it in a technical manner. "
             "Don't be cringe. "
             "Do not hallucinate. "
@@ -63,9 +77,17 @@ class GeminiBot:
                     system_instruction + f"INPUT:{row[0]} ANSWER:{row[1]}\n"
                 )
 
-        self.model = genai.GenerativeModel(
-            model_name, system_instruction=system_instruction
-        )
+        try:
+            self.model = genai.GenerativeModel(
+                model_name, system_instruction=system_instruction
+            )
+        except Exception as e:
+            logging.exception(
+                f"GEMINI: {e.message}. Initiating gemini-1.5-flash as the default model instead. "
+            )
+            self.model = genai.GenerativeModel(
+                "models/gemini-1.5-flash", system_instruction=system_instruction
+            )
 
         # Might be a hacky way to pass the client object
         # It's only required to swap mentions with usernames
@@ -74,7 +96,9 @@ class GeminiBot:
         # Gemini API provides a chat option to maintain a conversation
         self.chat = self.model.start_chat(history=[])
 
-    def prompt_gemini(self, input_msg=None, attachment=None) -> (Embed, Errors):
+    async def prompt_gemini(
+        self, author, input_msg=None, attachment=None, show_input=True
+    ) -> (Embed, Errors):
         try:
             payload = []
 
@@ -84,43 +108,74 @@ class GeminiBot:
             if attachment:
                 payload.append(attachment)
 
-            response = self.chat.send_message(
+            response = await self.chat.send_message_async(
                 payload,
                 safety_settings=SAFETY_SETTINGS,
             )
+
             if len(response.text) > 1024:
+                logging.error(
+                    f"GEMINI: {author} encountered an error processing the response: {ERROR_MESSAGES[Errors.GEMINI_RESPONSE_TOO_LONG_ERR]}"
+                )
                 return None, Errors.GEMINI_RESPONSE_TOO_LONG_ERR
-        except Exception:
+        except Exception as e:
+            logging.exception(
+                f"GEMINI: {author} encountered an error prompting Gemini: {e}"
+            )
+
+            # Google Core API Errors have the code attribute that denotes the HTTP code
+            if hasattr(e, "code") and e.code in Errors:
+                return None, Errors(e.code)
+
+            # If unrecognised error
             return None, Errors.GEMINI_ERR
 
-        response_embed = Embed(title="Ask Gemini", color=0x3333FF)
+        response_embed = Embed(title="Ask Gemini", color=LIGHT_YELLOW)
 
+        if show_input:
+
+            response_embed.add_field(
+                name="Input",
+                value=input_msg if input_msg is not None else "Attachment",
+                inline=False,
+            )
         response_embed.add_field(
-            name="Input",
-            value=input_msg if input_msg is not None else "Attachment",
+            name="Answer",
+            value=response.text,
             inline=False,
         )
-        response_embed.add_field(name="Answer", value=response.text, inline=False)
         return response_embed, None
 
     async def query(self, author, message=None, attachment=None) -> list[Embed]:
 
         response_embeds = []
         response_image_url = None
-        main_err = None
+        errors = []
 
         # No message or file
         if not message and not attachment:
-            response_embed = self.prompt_gemini(
-                f"Roast the user using their username - {author} for providing a blank input."
+            logging.error(f"GEMINI: {author} provided blank input to Gemini!")
+            response_embed, err = await self.prompt_gemini(
+                author=author,
+                input_msg=f"Roast the user using their username - {author} for providing a blank input.",
+                show_input=False,
             )
+            if err is not None:
+                return [get_error_embed([err])]
             return [response_embed]
 
         # Message too long
         if message is not None and len(message) > 200:
-            response_embed = self.prompt_gemini(
-                f"Roast the user using their username - {author} for providing way too many tokens."
+            logging.error(
+                f"GEMINI: {author} provided {len(message)} tokens to Gemini, which exceeds the limit."
             )
+            response_embed, err = await self.prompt_gemini(
+                author=author,
+                input_msg=f"Roast the user using their username - {author} for providing way too many tokens.",
+                show_input=False,
+            )
+            if err is not None:
+                return [get_error_embed([err])]
             return [response_embed]
 
         message = swap_mention_with_username(message, self.bot)
@@ -129,32 +184,35 @@ class GeminiBot:
         # If a file is provided and is valid
         if attachment is not None:
 
-            err = is_valid_ext_size(attachment)
+            err = is_valid_ext_size(author, attachment)
             if err:
-                main_err = err
+                errors.append(err)
             if err is None:
-                # # Convert extension to lowercase (Gemini File API requires all lowercase characters)
-                # attachment = transform_attachment(attachment)
-
                 file_ref, err = await upload_or_return_file_ref(attachment)
                 if file_ref:
                     attachment_ref = file_ref
                     response_image_url = attachment.url
                 if err:
-                    main_err = err
+                    logging.error(
+                        f"GEMINI: {author} encountered an error uploading an attachment to Gemini: {ERROR_MESSAGES[err]}"
+                    )
+                    errors.append(err)
 
         # If only attachment was provided but did not upload successfully
-        if message is None and err is not None:
+        if message is None and len(errors) != 0:
+            logging.error(
+                f"GEMINI: {author} passed an empty query and uploaded an invalid attachment to Gemini."
+            )
             return [
                 Embed(
                     title="Ask Gemini",
                     description="The attachment is invalid and no text input is provided.",
-                    color=0xFF3333,
+                    color=LIGHT_YELLOW,
                 )
             ]
 
-        response_embed, err = self.prompt_gemini(
-            input_msg=message, attachment=attachment_ref
+        response_embed, err = await self.prompt_gemini(
+            author=author, input_msg=message, attachment=attachment_ref
         )
 
         # If response is none, it means something went wrong, so directly go to the error embed
@@ -168,18 +226,16 @@ class GeminiBot:
 
         # The last encountered error is used for the embed
         if err is not None:
-            main_err = err
+            errors.append(err)
 
-        if main_err:
-            err_embed = Embed(
-                title="NOTE", description=ERROR_MESSAGES[err], color=0xFF3333
-            )
+        if len(errors) != 0:
+            err_embed = get_error_embed(errors)
             response_embeds.append(err_embed)
 
         # The chat instance maintains a chat convo by sending all previous messages as input every time
         # This can easily exhaust the free tier of Gemini API, so choosing to clear the history every 50 messages
         if len(self.chat.history) >= 50:
-            self.chat.history = []
+            self.chat.history([])
             delete_files()
 
         return response_embeds
@@ -191,21 +247,12 @@ async def upload_or_return_file_ref(attachment) -> (File, Errors):
 
     file_name = os.path.splitext(attachment.filename)[0]
 
-    # Path("src/temp").mkdir(exist_ok=True)
-
     try:
         # If image is already uploaded to
         file_ref = return_genai_file_ref(file_name)
 
         if file_ref:
             return file_ref, None
-
-        # # If file exists in the server but not uploaded to Gemini
-        # elif os.path.isfile(f"src/temp/{attachment.filename}"):
-        #     file_ref = genai.upload_file(
-        #         path=f"src/temp/{attachment.filename}", display_name=file_name
-        #     )
-        #     return file_ref, None
 
         # If new image
         else:
@@ -220,10 +267,16 @@ async def upload_or_return_file_ref(attachment) -> (File, Errors):
             return file_ref, None
 
     except Exception as e:
+        if hasattr(e, "code") and e.code in Errors:
+            return None, Errors(e.code)
         return None, Errors.FILE_UPLOAD_ERR
 
 
 def return_genai_file_ref(file_name):
+    """
+    Returns a File object from the Gemini API if the user provided file has been uploaded before.
+    Returns None otherwise.
+    """
     files_list = genai.list_files()
 
     for file in files_list:
@@ -242,7 +295,7 @@ def delete_files():
         genai.delete_file(file.name)
 
 
-def is_valid_ext_size(file) -> Errors:
+def is_valid_ext_size(author, file) -> Errors:
     """Helper function to check if the file passed as input has a valid content type and acceptable size
     Currently only supporting images and audio"""
 
@@ -262,9 +315,15 @@ def is_valid_ext_size(file) -> Errors:
 
     # File too large
     if (file.is_voice_message() and file.duration() > 300) or file.size > 3e7:
+        logging.error(
+            f"GEMINI: {author} uploaded an attachment that was too large for Gemini."
+        )
         return Errors.FILE_SIZE_ERR
 
     if file.content_type not in valid_content_types:
+        logging.error(
+            f"GEMINI: {author} uploaded an attachment with an invalid content type: {file.content_type}"
+        )
         return Errors.FILE_TYPE_ERR
 
     return None
@@ -288,10 +347,19 @@ def swap_mention_with_username(message, bot):
     return message
 
 
-# def transform_attachment(attachment):
-#     """Converts attachment to lowercase and handles special characters"""
+def get_error_embed(errors):
+    """
+    Takes a list of Errors as input and creates an Embed containing error names and messages as subfields.
+    """
 
-#     attachment.filename = attachment.filename.lower()
-#     attachment.filename = re.sub('[^a-z0-9. \n]', '-', attachment.filename)
+    err_embed = Embed(
+        title="NOTE",
+        description="There were a bunch of errors!",
+        color=LIGHT_YELLOW,
+    )
 
-#     return attachment
+    # Subfield for all errors faced
+    for err in errors:
+        err_embed.add_field(name=ERROR_MESSAGES[err], inline=False)
+
+    return err_embed

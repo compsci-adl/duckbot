@@ -19,6 +19,7 @@ from discord.errors import NotFound
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from constants.colours import LIGHT_YELLOW
 from commands import gemini, skullboard
 from utils import time
 
@@ -129,9 +130,7 @@ async def ping(interaction: Interaction):
 
 
 @client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
-async def ask_gemini(
-    interaction: Interaction, query: str | None, file: Attachment | None
-):
+async def chat(interaction: Interaction, query: str | None, file: Attachment | None):
 
     try:
         await interaction.response.defer()
@@ -139,7 +138,6 @@ async def ask_gemini(
         bot_response = await client.gemini_model.query(
             message=query, attachment=file, author=interaction.user
         )
-        print(bot_response)
         await interaction.followup.send(embeds=bot_response)
 
     except NotFound as e:
@@ -154,15 +152,15 @@ async def ask_gemini(
             raise  # Re-raise other NotFound errors
 
     except Exception as e:
-        logging.exception(
-            f"User {interaction.user.name} triggered the following error while calling Gemini: {e.message}."
-        )
         await interaction.followup.send(
             embed=Embed(
                 title="Error",
                 description="There was an error processing your request.",
-                color=0xFF3333,
+                color=LIGHT_YELLOW,
             )
+        )
+        logging.exception(
+            f"GEMINI: User {interaction.user.name} triggered the following error while calling Gemini: {e}"
         )
 
 
