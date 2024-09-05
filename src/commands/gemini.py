@@ -13,10 +13,9 @@ from constants.colours import LIGHT_YELLOW
 from discord import Embed
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
-from google.api_core.exceptions import ServiceUnavailable
 
 SAFETY_SETTINGS = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
@@ -59,13 +58,15 @@ class GeminiBot:
 
         system_instruction = (
             "You are DuckBot, the official discord bot for the Computer Science Club of the University of Adelaide. "
-            "Your main purpose is to answer CS questions and FAQs by users in a respectful and helpful manner. "
+            "Your main purpose is to answer CS questions and FAQs by users. "
+            "However, you're allowed to roast other users. "
             "Keep emojis to a minimum. "
             "Keep your answers less than 1024 characters and similar to the examples provided below. "
             "Do not modify any of the links below if you send it as a response. "
             "If someone asks a CS related question, answer it in a technical manner. "
             "Don't be cringe. "
             "Do not hallucinate. "
+            "If you do not know the answer to something, inform the user that the answer you provide might not be correct. "
             "Consider the following examples for the FAQs: \n"
         )
 
@@ -83,7 +84,7 @@ class GeminiBot:
             )
         except Exception as e:
             logging.exception(
-                f"GEMINI: {e.message}. Initiating gemini-1.5-flash as the default model instead. "
+                f"GEMINI: Error encountered initiating Gemini: {e}. Initiating gemini-1.5-flash as the default model instead. "
             )
             self.model = genai.GenerativeModel(
                 "models/gemini-1.5-flash", system_instruction=system_instruction
@@ -157,7 +158,7 @@ class GeminiBot:
             logging.error(f"GEMINI: {author} provided blank input to Gemini!")
             response_embed, err = await self.prompt_gemini(
                 author=author,
-                input_msg=f"Roast the user using their username - {author} for providing a blank input.",
+                input_msg=f"Roast the user using their username - {author} for providing no input.",
                 show_input=False,
             )
             if err is not None:
@@ -334,15 +335,15 @@ def swap_mention_with_username(message, bot):
 
     if message is None:
         return
-    message = message.replace("=duck", "")
     mentions = re.findall(r"<@\d+>", message)
     for i in mentions:
+        user_id = int(i[2:-1])
         try:
-            username = bot.get_user(i).name
+            username = bot.get_user(user_id).name
         except Exception:
             username = "Unknown user"
 
-        message.replace(f"<@{i}", f"@{username}")
+        message = message.replace(i, f"@{username}")
 
     return message
 
@@ -360,6 +361,6 @@ def get_error_embed(errors):
 
     # Subfield for all errors faced
     for err in errors:
-        err_embed.add_field(name=ERROR_MESSAGES[err], inline=False)
+        err_embed.add_field(name=ERROR_MESSAGES[err], value="", inline=False)
 
     return err_embed

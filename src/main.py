@@ -204,7 +204,9 @@ async def on_message(message: Message):
         attachment = message.attachments[0] if message.attachments else None
 
         bot_response = await client.gemini_model.query(
-            author=message.author, message=message.clean_content, attachment=attachment
+            author=message.author,
+            message=message.clean_content.replace("=duck", ""),
+            attachment=attachment,
         )
         await message.reply(embeds=bot_response, mention_author=False)
 
