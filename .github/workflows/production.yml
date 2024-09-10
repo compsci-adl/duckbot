@@ -49,12 +49,11 @@ jobs:
       - name: Build Docker container
         run: |
           docker buildx build \
-            --platform=linux/arm64 \
-            --tag duckbot:latest \
             --cache-from=type=local,src=/tmp/.buildx-cache \
             --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            --file=Dockerfile .
-          docker image save duckbot | gzip > duckbot.tar.gz
+            --output type=docker,dest=duckbot.tar \
+            --platform=linux/arm64 --file=Dockerfile -t duckbot .
+          gzip duckbot.tar
 
       - name: Save Docker cache
         if: success()
