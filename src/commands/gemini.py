@@ -80,14 +80,18 @@ class GeminiBot:
 
         try:
             self.model = genai.GenerativeModel(
-                model_name, system_instruction=system_instruction
+                model_name,
+                system_instruction=system_instruction,
+                generation_config={"temperature": 1.3},
             )
         except Exception as e:
             logging.exception(
                 f"GEMINI: Error encountered initiating Gemini: {e}. Initiating gemini-1.5-flash as the default model instead. "
             )
             self.model = genai.GenerativeModel(
-                "models/gemini-1.5-flash", system_instruction=system_instruction
+                "models/gemini-1.5-flash",
+                system_instruction=system_instruction,
+                generation_config={"temperature": 1.3},
             )
 
         # Might be a hacky way to pass the client object
@@ -158,7 +162,7 @@ class GeminiBot:
             logging.error(f"GEMINI: {author} provided blank input to Gemini!")
             response_embed, err = await self.prompt_gemini(
                 author=author,
-                input_msg=f"Roast the user using their username - {author} for providing no input.",
+                input_msg=f"Roast the user using their username - '{author}' for providing no input.",
                 show_input=False,
             )
             if err is not None:
@@ -172,7 +176,7 @@ class GeminiBot:
             )
             response_embed, err = await self.prompt_gemini(
                 author=author,
-                input_msg=f"Roast the user using their username - {author} for providing way too many tokens.",
+                input_msg=f"Roast the user using their username - '{author}' for providing way too many tokens.",
                 show_input=False,
             )
             if err is not None:

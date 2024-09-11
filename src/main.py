@@ -63,7 +63,7 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            model_name="models/gemini-1.5-flash-001",
+            model_name="models/gemini-1.5-flash",
             data_csv_path="src/data/duckbot_train_data.csv",
             bot=self,
             api_key=GEMINI_API_KEY,
@@ -136,7 +136,7 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
         await interaction.response.defer()
         query = "" if query == None else query
         bot_response = await client.gemini_model.query(
-            message=query, attachment=file, author=interaction.user
+            message=query, attachment=file, author=interaction.user.display_name
         )
         await interaction.followup.send(embeds=bot_response)
 
@@ -160,7 +160,7 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
             )
         )
         logging.exception(
-            f"GEMINI: User {interaction.user.name} triggered the following error while calling Gemini: {e}"
+            f"GEMINI: User {interaction.user.display_name} triggered the following error while calling Gemini: {e}"
         )
 
 
@@ -199,13 +199,13 @@ async def help(interaction: Interaction):
 @client.event
 async def on_message(message: Message):
     if (
-        client.user.mentioned_in(message) or "=duck" in message.clean_content
+        client.user.mentioned_in(message) or "=chat" in message.clean_content
     ) and message.author != client.user:
         attachment = message.attachments[0] if message.attachments else None
 
         bot_response = await client.gemini_model.query(
-            author=message.author,
-            message=message.clean_content.replace("=duck", ""),
+            author=message.author.display_name,
+            message=message.clean_content.replace("=chat", ""),
             attachment=attachment,
         )
         await message.reply(embeds=bot_response, mention_author=False)
