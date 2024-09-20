@@ -199,13 +199,13 @@ async def help(interaction: Interaction):
 @client.event
 async def on_message(message: Message):
     if (
-        client.user.mentioned_in(message) or "=chat" in message.clean_content
+        client.user.mentioned_in(message) or "d." in message.clean_content
     ) and message.author != client.user:
         attachment = message.attachments[0] if message.attachments else None
 
         bot_response = await client.gemini_model.query(
             author=message.author.display_name,
-            message=message.clean_content.replace("=chat", ""),
+            message=message.clean_content.replace("d.", ""),
             attachment=attachment,
         )
         await message.reply(embeds=bot_response, mention_author=False)

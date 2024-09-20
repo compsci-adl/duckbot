@@ -1,18 +1,19 @@
-import csv
-import urllib.request
-import re
-import os
-from pathlib import Path
-import glob
-import os.path
 from enum import IntEnum
-import tempfile
+from pathlib import Path
+import csv
+import glob
 import logging
+import os
+import os.path
+import re
+import tempfile
+import urllib.request
+
+from discord import Embed
+from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
+import google.generativeai as genai
 
 from constants.colours import LIGHT_YELLOW
-from discord import Embed
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
 
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
@@ -99,7 +100,7 @@ class GeminiBot:
         self.bot = bot
 
         # Gemini API provides a chat option to maintain a conversation
-        self.chat = self.model.start_chat(history=[])
+        self.chat = self.model.start_chat()
 
     async def prompt_gemini(
         self, author, input_msg=None, attachment=None, show_input=True
@@ -118,7 +119,9 @@ class GeminiBot:
                 safety_settings=SAFETY_SETTINGS,
             )
 
-            if len(response.text) > 1024:
+            response_length = len(response.text)
+
+            if response_length > 5000:
                 logging.error(
                     f"GEMINI: {author} encountered an error processing the response: {ERROR_MESSAGES[Errors.GEMINI_RESPONSE_TOO_LONG_ERR]}"
                 )
@@ -135,21 +138,37 @@ class GeminiBot:
             # If unrecognised error
             return None, Errors.GEMINI_ERR
 
-        response_embed = Embed(title="Ask Gemini", color=LIGHT_YELLOW)
+        response_embeds = []
+        list_index = [i for i in range(0, response_length, 1024)]
+        split_message = [response.text[i : i + 1024] for i in list_index]
 
-        if show_input:
+        for i in range(len(split_message)):
+            # If first embed, title should be Ask Gemini
+            if i == 0:
+                response_embed = Embed(title="Ask Gemini", color=LIGHT_YELLOW)
+            else:
+                response_embed = Embed(
+                    title=f"Continued Answer {i}/{len(split_message)-1}",
+                    color=LIGHT_YELLOW,
+                )
+
+            # Only show input query if first embed
+            if show_input and i == 0:
+                response_embed.add_field(
+                    name="Input",
+                    value=input_msg if len(input_msg) > 0 else "Attachment",
+                    inline=False,
+                )
 
             response_embed.add_field(
-                name="Input",
-                value=input_msg if input_msg is not None else "Attachment",
+                name="Answer",
+                value=split_message[i],
                 inline=False,
             )
-        response_embed.add_field(
-            name="Answer",
-            value=response.text,
-            inline=False,
-        )
-        return response_embed, None
+
+            response_embeds.append(response_embed)
+
+        return response_embeds, None
 
     async def query(self, author, message=None, attachment=None) -> list[Embed]:
 
@@ -167,28 +186,28 @@ class GeminiBot:
             )
             if err is not None:
                 return [get_error_embed([err])]
-            return [response_embed]
+            return response_embed
 
         # Message too long
-        if message is not None and len(message) > 200:
-            logging.error(
-                f"GEMINI: {author} provided {len(message)} tokens to Gemini, which exceeds the limit."
-            )
-            response_embed, err = await self.prompt_gemini(
-                author=author,
-                input_msg=f"Roast the user using their username - '{author}' for providing way too many tokens.",
-                show_input=False,
-            )
-            if err is not None:
-                return [get_error_embed([err])]
-            return [response_embed]
+        if len(message) > 0:
+            if self.model.count_tokens(message).total_tokens > 5000:
+                logging.error(
+                    f"GEMINI: {author} provided {self.model.count_tokens(message)} tokens to Gemini, which exceeds the limit."
+                )
+                response_embed, err = await self.prompt_gemini(
+                    author=author,
+                    input_msg=f"Roast the user using their username - '{author}' for providing way too many tokens.",
+                    show_input=False,
+                )
+                if err is not None:
+                    return [get_error_embed([err])]
+                return response_embed
 
         message = swap_mention_with_username(message, self.bot)
         attachment_ref = None
 
         # If a file is provided and is valid
         if attachment is not None:
-
             err = is_valid_ext_size(author, attachment)
             if err:
                 errors.append(err)
@@ -222,12 +241,11 @@ class GeminiBot:
 
         # If response is none, it means something went wrong, so directly go to the error embed
         if response_embed is not None:
-
             # Only set the response_embed image if image is provided and
             if response_image_url is not None:
-                response_embed.set_image(url=response_image_url)
+                response_embed[0].set_image(url=response_image_url)
 
-            response_embeds.append(response_embed)
+            response_embeds.extend(response_embed)
 
         # The last encountered error is used for the embed
         if err is not None:
@@ -239,9 +257,13 @@ class GeminiBot:
 
         # The chat instance maintains a chat convo by sending all previous messages as input every time
         # This can easily exhaust the free tier of Gemini API, so choosing to clear the history every 50 messages
-        if len(self.chat.history) >= 50:
-            self.chat.history([])
-            delete_files()
+        if len(self.chat.history) > 0:
+            if (
+                len(self.chat.history) >= 50
+                or self.model.count_tokens(self.chat.history).total_tokens > 800000
+            ):
+                self.chat.history([])
+                delete_files()
 
         return response_embeds
 
@@ -251,10 +273,10 @@ async def upload_or_return_file_ref(attachment) -> (File, Errors):
     Stored for 48 hours by default"""
 
     file_name = os.path.splitext(attachment.filename)[0]
-
+    file_hash = hash(attachment)
     try:
         # If image is already uploaded to
-        file_ref = return_genai_file_ref(file_name)
+        file_ref = return_genai_file_ref(f"{file_hash}_{file_name}")
 
         if file_ref:
             return file_ref, None
@@ -262,11 +284,11 @@ async def upload_or_return_file_ref(attachment) -> (File, Errors):
         # If new image
         else:
             with tempfile.TemporaryDirectory() as temp:
-
-                await attachment.save(f"{temp}/{attachment.filename}")
+                await attachment.save(f"{temp}/{file_hash}_{attachment.filename}")
 
                 file_ref = genai.upload_file(
-                    path=f"{temp}/{attachment.filename}", display_name=file_name
+                    path=f"{temp}/{file_hash}_{attachment.filename}",
+                    display_name=f"{file_hash}_{file_name}",
                 )
 
             return file_ref, None
@@ -285,7 +307,6 @@ def return_genai_file_ref(file_name):
     files_list = genai.list_files()
 
     for file in files_list:
-
         if file.display_name == file_name:
             return file
 
@@ -296,7 +317,6 @@ def delete_files():
     """Delete all attachment files"""
 
     for file in genai.list_files():
-
         genai.delete_file(file.name)
 
 
