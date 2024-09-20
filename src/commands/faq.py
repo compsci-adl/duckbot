@@ -92,7 +92,7 @@ class FNGGroup(app_commands.Group):
         # Determining if games night is on the next day of function call
         if time_difference.days < 2 and time_difference.days > 1:
             await interaction.response.send_message(
-                f"The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
+                "The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
             )
             return
 
