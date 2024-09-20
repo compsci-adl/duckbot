@@ -262,7 +262,7 @@ class GeminiBot:
                 len(self.chat.history) >= 50
                 or self.model.count_tokens(self.chat.history).total_tokens > 800000
             ):
-                self.chat.history([])
+                self.chat.history = []
                 delete_files()
 
         return response_embeds
