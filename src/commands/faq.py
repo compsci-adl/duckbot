@@ -55,6 +55,7 @@ class FNGGroup(app_commands.Group):
         # Manually inputting dates
         date_stack = [
             tz.localize(dt.datetime(2024, 10, 25, 17)),
+            tz.localize(dt.datetime(2024, 9, 27, 17)),
             tz.localize(dt.datetime(2024, 8, 30, 17)),
             tz.localize(dt.datetime(2024, 7, 26, 17)),
             tz.localize(dt.datetime(2024, 5, 31, 17)),
@@ -105,7 +106,10 @@ class FNGGroup(app_commands.Group):
         # Determining whether date needs a st, nd, rd or rth
         date_num = date_stack[-1].strftime("%d")
         date_day = date_stack[-1].strftime("%B")
-        message = f"The next Friday Night Games with food will be held in {time_difference.days} days on the {date_num}"
+        time_difference_days = time_difference.days
+        if (curr_date.time().hour > 17):
+            time_difference_days += 1 # This allows for a more intuitive display of the difference in days
+        message = f"The next Friday Night Games with food will be held in {time_difference_days} days on the {date_num}"
         if date_num in {1, 21, 31}:
             message += "st "
         elif date_num in {2, 22}:
