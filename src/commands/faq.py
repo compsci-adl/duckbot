@@ -54,7 +54,7 @@ class FNGGroup(app_commands.Group):
         tz = pytz.timezone("Australia/Adelaide")
         # Manually inputting dates
         date_stack = [
-            tz.localize(dt.datetime(2024, 10, 25, 17)),
+            tz.localize(dt.datetime(2024, 10, 25, 12)),
             tz.localize(dt.datetime(2024, 8, 30, 17)),
             tz.localize(dt.datetime(2024, 7, 26, 17)),
             tz.localize(dt.datetime(2024, 5, 31, 17)),
@@ -76,12 +76,11 @@ class FNGGroup(app_commands.Group):
                 "The next Friday Night Games with food will be next year. Thank you for being a valued member!"
             )
             return
-
         # Determining if games night is on the same day as day of function call
         time_difference = date_stack[-1] - curr_date
-        if time_difference.days < 1:
+        if date_stack[-1].date() == curr_date.date():
             time_difference_hours = floor(time_difference.seconds / 3600)
-            time_difference_minutes = ceil(time_difference.seconds / 60)
+            time_difference_minutes = ceil((time_difference.seconds % 3600)/60)
             message = ""
             # Handle hours
             if time_difference_hours == 1:
@@ -97,7 +96,7 @@ class FNGGroup(app_commands.Group):
             return
 
         # Determining if games night is on the next day of function call
-        if time_difference.days < 2 and time_difference.days >= 1:
+        if date_stack[-1].date() == (curr_date + dt.timedelta(days=1)).date():
             await interaction.response.send_message(
                 f"The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
             )
