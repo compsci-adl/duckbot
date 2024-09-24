@@ -107,8 +107,10 @@ class FNGGroup(app_commands.Group):
         date_num = date_stack[-1].strftime("%d")
         date_day = date_stack[-1].strftime("%B")
         time_difference_days = time_difference.days
-        if (curr_date.time().hour > 17):
-            time_difference_days += 1 # This allows for a more intuitive display of the difference in days
+        if curr_date.time().hour > 17:
+            time_difference_days += (
+                1  # This allows for a more intuitive display of the difference in days
+            )
         message = f"The next Friday Night Games with food will be held in {time_difference_days} days on the {date_num}"
         if date_num in {1, 21, 31}:
             message += "st "
