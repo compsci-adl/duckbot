@@ -80,7 +80,7 @@ class FNGGroup(app_commands.Group):
         time_difference = date_stack[-1] - curr_date
         if date_stack[-1].date() == curr_date.date():
             time_difference_hours = floor(time_difference.seconds / 3600)
-            time_difference_minutes = ceil((time_difference.seconds % 3600)/60)
+            time_difference_minutes = ceil((time_difference.seconds % 3600) / 60)
             message = ""
             # Handle hours
             if time_difference_hours == 1:
