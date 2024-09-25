@@ -15,7 +15,7 @@ jobs:
   build:
     needs: lint-format
     name: Build
-    runs-on: [self-hosted, ARM64] # Since deployment is on arm64
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
@@ -30,11 +30,35 @@ jobs:
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Set up QEMU for ARM64
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build Docker container
         run: |
           docker buildx build \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --output type=docker,dest=duckbot.tar \
             --platform=linux/arm64 --file=Dockerfile -t duckbot .
-          docker image save duckbot | gzip > duckbot.tar.gz
+          gzip duckbot.tar
+
+      - name: Save Docker cache
+        if: success()
+        run: |
+          rsync -a --delete /tmp/.buildx-cache-new/ /tmp/.buildx-cache/
 
       - name: Copy image and compose file to S3
         run: |
@@ -57,6 +81,7 @@ jobs:
           SKULLBOARD_CHANNEL_ID: ${{ secrets.SKULLBOARD_CHANNEL_ID }}
           REQUIRED_REACTIONS: ${{ secrets.REQUIRED_REACTIONS }}
           TENOR_API_KEY: ${{ secrets.TENOR_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
@@ -68,6 +93,7 @@ jobs:
             echo SKULLBOARD_CHANNEL_ID=${{ secrets.SKULLBOARD_CHANNEL_ID }} >> .env
             echo REQUIRED_REACTIONS=${{ secrets.REQUIRED_REACTIONS }} >> .env
             echo TENOR_API_KEY=${{ secrets.TENOR_API_KEY }} >> .env
+            echo GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '

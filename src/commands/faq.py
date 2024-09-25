@@ -98,7 +98,7 @@ class FNGGroup(app_commands.Group):
         # Determining if games night is on the next day of function call
         if date_stack[-1].date() == (curr_date + dt.timedelta(days=1)).date():
             await interaction.response.send_message(
-                f"The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
+                "The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
             )
             return
 
@@ -110,7 +110,7 @@ class FNGGroup(app_commands.Group):
             time_difference_days += (
                 1  # This allows for a more intuitive display of the difference in days
             )
-        message = f"The next Friday Night Games with food will be held in {time_difference_days} days on the {date_num}"
+        message = f"The next Friday Night Games with food will be held in {time_difference.days} days on the {date_num}"
         if date_num in {1, 21, 31}:
             message += "st "
         elif date_num in {2, 22}:
