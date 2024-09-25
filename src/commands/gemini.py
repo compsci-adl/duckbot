@@ -5,12 +5,20 @@ import os
 import os.path
 import re
 import tempfile
+import time
+from collections import defaultdict
+import random
+import requests
 
 from discord import Embed
 from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
 import google.generativeai as genai
+from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
+
+# Load environment variables from .env file
+load_dotenv()
 
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
@@ -51,8 +59,14 @@ ERROR_MESSAGES = {
 
 
 class GeminiBot:
+    REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
+    LIMIT_WINDOW = int(os.environ["LIMIT_WINDOW"])
+
     def __init__(self, model_name, data_csv_path, bot, api_key):
         genai.configure(api_key=api_key)
+
+        # Dictionary to track users and their request timestamps
+        self.user_requests = defaultdict(list)
 
         system_instruction = (
             "You are DuckBot, the official discord bot for the Computer Science Club of the University of Adelaide. "
@@ -101,6 +115,49 @@ class GeminiBot:
 
         # Gemini API provides a chat option to maintain a conversation
         self.chat = self.model.start_chat()
+
+    def check_rate_limit(self, author_id):
+        """Check if the user has exceeded their rate limit."""
+        current_time = time.time()
+        request_times = self.user_requests[author_id]
+
+        # Filter out requests that happened more than a minute ago
+        request_times = [
+            timestamp
+            for timestamp in request_times
+            if current_time - timestamp < self.LIMIT_WINDOW
+        ]
+
+        # Update the user's request history with only the recent ones
+        self.user_requests[author_id] = request_times
+
+        # If the user has made more than the allowed requests in the past minute, deny the request
+        if len(request_times) >= self.REQUESTS_PER_MINUTE:
+            return False
+
+        # Otherwise, log the current request
+        self.user_requests[author_id].append(current_time)
+        return True
+
+    async def get_random_leetcode_problem(self):
+        response = requests.get("https://leetcode.com/api/problems/all/")
+        if response.status_code == 200:
+            data = response.json()
+            # This contains the list of problems
+            problems = data["stat_status_pairs"]
+
+            if problems:
+                # Select a random problem
+                random_problem = random.choice(problems)
+                question_slug = random_problem["stat"]["question__title_slug"]
+                question_url = f"https://leetcode.com/problems/{question_slug}/"
+                return question_url
+            else:
+                print("No problems found.")
+                return None
+        else:
+            print(f"Failed to retrieve problems: {response.status_code}")
+        return None
 
     async def prompt_gemini(
         self, author, input_msg=None, attachment=None, show_input=True
@@ -170,9 +227,26 @@ class GeminiBot:
 
         return response_embeds, None
 
-    async def query(self, author, message=None, attachment=None) -> list[Embed]:
-
+    async def query(
+        self, author_id, author, message=None, attachment=None
+    ) -> list[Embed]:
         response_embeds = []
+        # Check the rate limit before processing the query
+        if not self.check_rate_limit(author_id):
+            # User exceeded the rate limit
+            problem_url = await self.get_random_leetcode_problem()
+            return [
+                Embed(
+                    title="Take a break",
+                    description=(
+                        f"Maybe instead of wasting your time spamming, you can do a Leetcode instead 😉\n"
+                        f"{problem_url}"
+                    ),  # Added a comma here
+                    color=LIGHT_YELLOW,
+                )
+            ]
+
+        # Process the message and attachment
         response_image_url = None
         errors = []
 
