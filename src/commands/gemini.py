@@ -57,6 +57,7 @@ ERROR_MESSAGES = {
     Errors.GEMINI_DEADLINE_EXCEEDED: "Gemini was unable to process a response as the query was too large. Please shorten your query and try again.",
 }
 
+
 class GeminiBot:
     REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
     LIMIT_WINDOW = int(os.environ["LIMIT_WINDOW"])
@@ -122,7 +123,10 @@ class GeminiBot:
 
         # Filter out requests that happened more than a minute ago
         request_times = [
-            timestamp for timestamp in request_times if current_time - timestamp < self.LIMIT_WINDOW]
+            timestamp
+            for timestamp in request_times
+            if current_time - timestamp < self.LIMIT_WINDOW
+        ]
 
         # Update the user's request history with only the recent ones
         self.user_requests[author_id] = request_times
@@ -134,19 +138,19 @@ class GeminiBot:
         # Otherwise, log the current request
         self.user_requests[author_id].append(current_time)
         return True
-    
+
     async def get_random_leetcode_problem(self):
-        response = requests.get('https://leetcode.com/api/problems/all/')
+        response = requests.get("https://leetcode.com/api/problems/all/")
         if response.status_code == 200:
             data = response.json()
             # This contains the list of problems
-            problems = data['stat_status_pairs']
+            problems = data["stat_status_pairs"]
 
             if problems:
                 # Select a random problem
                 random_problem = random.choice(problems)
-                question_slug = random_problem['stat']['question__title_slug']
-                question_url = f'https://leetcode.com/problems/{question_slug}/'
+                question_slug = random_problem["stat"]["question__title_slug"]
+                question_url = f"https://leetcode.com/problems/{question_slug}/"
                 return question_url
             else:
                 print("No problems found.")
@@ -154,7 +158,7 @@ class GeminiBot:
         else:
             print(f"Failed to retrieve problems: {response.status_code}")
         return None
-    
+
     async def prompt_gemini(
         self, author, input_msg=None, attachment=None, show_input=True
     ) -> (Embed, Errors):
@@ -223,7 +227,9 @@ class GeminiBot:
 
         return response_embeds, None
 
-    async def query(self, author_id, author, message=None, attachment=None) -> list[Embed]:
+    async def query(
+        self, author_id, author, message=None, attachment=None
+    ) -> list[Embed]:
         response_embeds = []
         # Check the rate limit before processing the query
         if not self.check_rate_limit(author_id):
