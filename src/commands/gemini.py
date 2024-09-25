@@ -5,12 +5,18 @@ import os
 import os.path
 import re
 import tempfile
+import time
+from collections import defaultdict
 
 from discord import Embed
 from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
 import google.generativeai as genai
+from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
+
+# Load environment variables from .env file
+load_dotenv()
 
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
@@ -49,10 +55,15 @@ ERROR_MESSAGES = {
     Errors.GEMINI_DEADLINE_EXCEEDED: "Gemini was unable to process a response as the query was too large. Please shorten your query and try again.",
 }
 
-
 class GeminiBot:
+    REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
+    LIMIT_WINDOW = int(os.environ["LIMIT_WINDOW"])
+
     def __init__(self, model_name, data_csv_path, bot, api_key):
         genai.configure(api_key=api_key)
+
+        # Dictionary to track users and their request timestamps
+        self.user_requests = defaultdict(list)
 
         system_instruction = (
             "You are DuckBot, the official discord bot for the Computer Science Club of the University of Adelaide. "
@@ -102,6 +113,26 @@ class GeminiBot:
         # Gemini API provides a chat option to maintain a conversation
         self.chat = self.model.start_chat()
 
+    def check_rate_limit(self, author_id):
+        """Check if the user has exceeded their rate limit."""
+        current_time = time.time()
+        request_times = self.user_requests[author_id]
+
+        # Filter out requests that happened more than a minute ago
+        request_times = [
+            timestamp for timestamp in request_times if current_time - timestamp < self.LIMIT_WINDOW]
+
+        # Update the user's request history with only the recent ones
+        self.user_requests[author_id] = request_times
+
+        # If the user has made more than the allowed requests in the past minute, deny the request
+        if len(request_times) >= self.REQUESTS_PER_MINUTE:
+            return False
+
+        # Otherwise, log the current request
+        self.user_requests[author_id].append(current_time)
+        return True
+    
     async def prompt_gemini(
         self, author, input_msg=None, attachment=None, show_input=True
     ) -> (Embed, Errors):
@@ -170,9 +201,20 @@ class GeminiBot:
 
         return response_embeds, None
 
-    async def query(self, author, message=None, attachment=None) -> list[Embed]:
-
+    async def query(self, author_id, author, message=None, attachment=None) -> list[Embed]:
         response_embeds = []
+        # Check the rate limit before processing the query
+        if not self.check_rate_limit(author_id):
+            # User exceeded the rate limit
+            return [
+                Embed(
+                    title="Warning",
+                    description="Stop spamming!!!",
+                    color=LIGHT_YELLOW,
+                )
+            ]
+
+        # Process the message and attachment
         response_image_url = None
         errors = []
 
