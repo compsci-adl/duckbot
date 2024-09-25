@@ -7,6 +7,8 @@ import re
 import tempfile
 import time
 from collections import defaultdict
+import random
+import requests
 
 from discord import Embed
 from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
@@ -133,6 +135,26 @@ class GeminiBot:
         self.user_requests[author_id].append(current_time)
         return True
     
+    async def get_random_leetcode_problem(self):
+        response = requests.get('https://leetcode.com/api/problems/all/')
+        if response.status_code == 200:
+            data = response.json()
+            # This contains the list of problems
+            problems = data['stat_status_pairs']
+
+            if problems:
+                # Select a random problem
+                random_problem = random.choice(problems)
+                question_slug = random_problem['stat']['question__title_slug']
+                question_url = f'https://leetcode.com/problems/{question_slug}/'
+                return question_url
+            else:
+                print("No problems found.")
+                return None
+        else:
+            print(f"Failed to retrieve problems: {response.status_code}")
+        return None
+    
     async def prompt_gemini(
         self, author, input_msg=None, attachment=None, show_input=True
     ) -> (Embed, Errors):
@@ -206,10 +228,14 @@ class GeminiBot:
         # Check the rate limit before processing the query
         if not self.check_rate_limit(author_id):
             # User exceeded the rate limit
+            problem_url = await self.get_random_leetcode_problem()
             return [
                 Embed(
-                    title="Warning",
-                    description="Stop spamming!!!",
+                    title="Take a break",
+                    description=(
+                        f"Maybe instead of wasting your time spamming, you can do a Leetcode instead 😉\n"
+                        f"{problem_url}"
+                    ),  # Added a comma here
                     color=LIGHT_YELLOW,
                 )
             ]
