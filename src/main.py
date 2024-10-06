@@ -136,7 +136,10 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
         await interaction.response.defer()
         query = "" if query == None else query
         bot_response = await client.gemini_model.query(
-            message=query, attachment=file, author=interaction.user.display_name
+            message=query,
+            attachment=file,
+            author=interaction.user.display_name,
+            author_id=interaction.user.id,
         )
         await interaction.followup.send(embeds=bot_response)
 
