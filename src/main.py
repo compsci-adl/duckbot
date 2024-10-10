@@ -201,6 +201,10 @@ async def help(interaction: Interaction):
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
+    # Ignore DMs by checking if the message was sent in a server
+    if message.guild is None:
+        return
+
     if (
         client.user.mentioned_in(message) or "d.chat" in message.clean_content
     ) and message.author != client.user:
