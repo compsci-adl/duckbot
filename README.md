@@ -6,7 +6,11 @@ DuckBot is a Discord bot written in Python using the discord.py library for the 
 
 To get started, please follow these steps:
 
-1. Install Poetry and add it to your PATH if not already installed:
+1. `git clone` the repository.
+
+2. Run `git config core.hooksPath .githooks` to enable the Git hooks.
+
+3. Install Poetry and add it to your PATH if not already installed:
 
     Linux, macOS, Windows (WSL)
     ```bash
@@ -19,15 +23,19 @@ To get started, please follow these steps:
     setx PATH "%APPDATA%\Python\Scripts;%PATH%"
     ```
 
-2. Install the dependencies.
+4. Install the dependencies.
 
     ```bash
     poetry install
     ```
 
-3. Copy `.env.example` to a new file `.env` and set required environment variables.
+5. [Create an app in the Discord developer portal and fetch the bot token](https://discord.com/developers/docs/quick-start/getting-started#step-1-creating-an-app) if you haven't already.
 
-4. Run the bot.
+6. [Enable privileged intents](https://discord.com/developers/docs/topics/gateway#enabling-privileged-intents) for the bot. You will need all 3 intents.
+
+7. Copy `.env.example` to a new file `.env` and set required environment variables.
+
+8. Run the bot.
 
     ```bash
     poetry run python src/main.py
