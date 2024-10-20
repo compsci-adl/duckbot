@@ -14,7 +14,10 @@ from discord import (
     Message,
     RawReactionActionEvent,
     Attachment,
+    ui,
+    ButtonStyle,
 )
+
 from discord.errors import NotFound
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -167,36 +170,108 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
         )
 
 
+class HelpMenu(ui.View):
+    currentpage : int = 0 # Page of currently displayed commands
+    commands = 0
+    def __init__(self):
+        super().__init__()
+        self.value = None
+        self.commands = list(client.tree.get_commands(guild=Object(GUILD_ID)))
+        self.children
+
+    def createMenu(self, page: int):
+        if page < 0:
+            self.currentpage = 0
+        elif page > len(self.commands):
+            self.currentpage = len(self.commands)-1
+        else:
+            self.currentpage = page
+        
+        embed = Embed(
+                title="Invalid embed",
+                description="Something went wrong!",
+                color=Color.yellow(),
+            )
+        
+        if self.currentpage < 0: # Invalid case for current page
+            logging.warning(
+                f"Help Menu: Invalid Help page of value {currentpage} was created."
+            )
+            embed = Embed(
+                title="Invalid embed",
+                description="Something went wrong!",
+                color=Color.yellow(),
+            )
+
+        if self.currentpage == 0: # Main help menu for displaying different groups with limited detail
+            embed = Embed(
+                title="DuckBot",
+                description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
+                color=Color.yellow(),
+            )
+
+            for command in self.commands:
+                if isinstance(command, app_commands.Group):
+                    # Add the group name
+                    embed.add_field(
+                        name=f"/{command.name}", value=f"{command.description}", inline=False
+                    )
+            embed.add_field(
+                name="/misc", value="Miscellaneous commands", inline=False
+            )
+        elif self.currentpage > 0:
+            command = self.commands[self.currentpage]
+
+            if isinstance(command, app_commands.Group):
+                # Add the group name
+                embed = Embed(
+                    title=f"{command.name} commands",
+                    description=f"{command.description}",
+                    color=Color.yellow(),
+                )
+                for subcommand in command.commands:
+                    embed.add_field(
+                        name=f"/{command.name} {subcommand.name}",
+                        value=subcommand.description,
+                        inline=True,
+                    )
+            else:
+                embed= Embed(
+                    title=f"/{command.name}", description=command.description, color=Color.yellow(),
+                )
+        return embed
+    
+    @ui.button(label="Next", style=ButtonStyle.primary)
+    async def menu_next(self, interaction: Interaction, button: ui.Button, ):
+        self.currentpage +=1
+        if self.currentpage > len(self.commands)-1:
+            return
+        elif self.currentpage > len(self.commands)-2:
+            button.disabled = True
+
+        embed = self.createMenu(self.currentpage)
+        await interaction.response.edit_message(embed = embed, view=self)
+    
+    @ui.button(label="Back", style=ButtonStyle.primary)
+    async def menu_back(self, interaction: Interaction, button: ui.Button, ):
+        self.currentpage -=1
+        if self.currentpage == 0:
+            button.disabled = True
+            await interaction.response.defer()
+            return
+
+        embed = self.createMenu(self.currentpage)
+        await interaction.response.edit_message(embed = embed, view=self)
+    
+
 @client.tree.command(
     description="View useful information about using the bot.",
     guild=Object(GUILD_ID),
 )
-async def help(interaction: Interaction):
-    commands = list(client.tree.get_commands(guild=Object(GUILD_ID)))
-    embed = Embed(
-        title="DuckBot",
-        description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
-        color=Color.yellow(),
-    )
-    for command in commands:
-        if isinstance(command, app_commands.Group):
-            # Add the group name
-            embed.add_field(
-                name=f"/{command.name}", value=f"{command.description}", inline=False
-            )
-            # Add each subcommand in the group
-            for subcommand in command.commands:
-                embed.add_field(
-                    name=f"/{command.name} {subcommand.name}",
-                    value=subcommand.description,
-                    inline=True,
-                )
-        else:
-            embed.add_field(
-                name=f"/{command.name}", value=command.description, inline=False
-            )
-    await interaction.response.send_message(embed=embed)
-
+async def help(interaction: Interaction):    
+    Help_Menu_View = HelpMenu() # Creating the view for buttons
+    embed = Help_Menu_View.createMenu(0)
+    await interaction.response.send_message(embed=embed, view=Help_Menu_View)
 
 # Ignore non-slash commands
 @client.event
