@@ -333,11 +333,18 @@ class GeminiBot:
         # This can easily exhaust the free tier of Gemini API, so choosing to clear the history every 50 messages
         if len(self.chat.history) > 0:
             if (
-                len(self.chat.history) >= 50
-                or self.model.count_tokens(self.chat.history).total_tokens > 800000
+                len(self.chat.history) >= 25
+                or self.model.count_tokens(self.chat.history).total_tokens > 400000
             ):
-                self.chat.history = []
-                delete_files()
+                logging.info("Clearing chat history and deleting files.")
+
+                try:
+                    self.chat.history = []
+                    delete_files()
+                except Exception as e:
+                    logging.error(
+                        f"Error during file deletion or clearing chat history: {e}"
+                    )
 
         return response_embeds
 
@@ -390,8 +397,18 @@ def return_genai_file_ref(file_name):
 def delete_files():
     """Delete all attachment files"""
 
-    for file in genai.list_files():
-        genai.delete_file(file.name)
+    try:
+        files = genai.list_files()
+        for file in files:
+            try:
+                genai.delete_file(file.name)
+                logging.info(f"Deleted file {file.name} from Google Gemini.")
+            except google.api_core.exceptions.PermissionDenied:
+                logging.error(f"Permission Denied: Unable to delete file {file.name}.")
+            except Exception as e:
+                logging.error(f"Error deleting file {file.name}: {e}")
+    except Exception as e:
+        logging.error(f"Error listing files for deletion: {e}")
 
 
 def is_valid_ext_size(author, file) -> Errors:
