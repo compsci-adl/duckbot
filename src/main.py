@@ -177,7 +177,6 @@ class HelpMenu(ui.View):
         super().__init__()
         self.value = None
         self.commands = list(client.tree.get_commands(guild=Object(GUILD_ID)))
-        self.children
 
     def createMenu(self, page: int):
         if page < 0:
@@ -186,6 +185,13 @@ class HelpMenu(ui.View):
             self.currentpage = len(self.commands)-1
         else:
             self.currentpage = page
+
+        for item in self.children:
+            if isinstance(item, ui.Button):
+                if item.label == "Next":
+                    item.disabled = self.currentpage >= len(self.commands)-1
+                if item.label == "Back":
+                    item.disabled = self.currentpage == 0
         
         embed = Embed(
                 title="Invalid embed",
@@ -240,18 +246,6 @@ class HelpMenu(ui.View):
                     title=f"/{command.name}", description=command.description, color=Color.yellow(),
                 )
         return embed
-    
-    @ui.button(label="Next", style=ButtonStyle.primary)
-    async def menu_next(self, interaction: Interaction, button: ui.Button, ):
-        self.currentpage +=1
-        if self.currentpage > len(self.commands)-1:
-            return
-        elif self.currentpage > len(self.commands)-2:
-            button.disabled = True
-
-        embed = self.createMenu(self.currentpage)
-        await interaction.response.edit_message(embed = embed, view=self)
-    
     @ui.button(label="Back", style=ButtonStyle.primary)
     async def menu_back(self, interaction: Interaction, button: ui.Button, ):
         self.currentpage -=1
@@ -259,6 +253,17 @@ class HelpMenu(ui.View):
             button.disabled = True
             await interaction.response.defer()
             return
+
+        embed = self.createMenu(self.currentpage)
+        await interaction.response.edit_message(embed = embed, view=self)
+
+    @ui.button(label="Next", style=ButtonStyle.primary)
+    async def menu_next(self, interaction: Interaction, button: ui.Button, ):
+        self.currentpage +=1
+        if self.currentpage > len(self.commands)-1:
+            return
+        elif self.currentpage > len(self.commands)-2:
+            button.disabled = True
 
         embed = self.createMenu(self.currentpage)
         await interaction.response.edit_message(embed = embed, view=self)
