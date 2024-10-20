@@ -215,7 +215,6 @@ class HelpMenu(ui.View):
                 description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
                 color=Color.yellow(),
             )
-
             for command in self.commands:
                 if isinstance(command, app_commands.Group):
                     # Add the group name
@@ -223,11 +222,17 @@ class HelpMenu(ui.View):
                         name=f"/{command.name}", value=f"{command.description}", inline=False
                     )
             embed.add_field(
-                name="/misc", value="Miscellaneous commands", inline=False
+                name="Misc", value="Miscellaneous commands", inline=False
             )
+            for command in self.commands:
+                if not isinstance(command, app_commands.Group):
+                    embed.add_field(
+                        name=f"/{command.name}", value=f"{command.description}", inline=False
+                    )
+                    
         elif self.currentpage > 0:
             command = self.commands[self.currentpage]
-
+                
             if isinstance(command, app_commands.Group):
                 # Add the group name
                 embed = Embed(
@@ -246,6 +251,7 @@ class HelpMenu(ui.View):
                     title=f"/{command.name}", description=command.description, color=Color.yellow(),
                 )
         return embed
+    
     @ui.button(label="Back", style=ButtonStyle.primary)
     async def menu_back(self, interaction: Interaction, button: ui.Button, ):
         self.currentpage -=1
