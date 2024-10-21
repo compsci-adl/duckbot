@@ -10,13 +10,9 @@ from discord import (
     Object,
     Interaction,
     Embed,
-    Color,
     Message,
     RawReactionActionEvent,
     Attachment,
-    ui,
-    ButtonStyle,
-    SelectOption,
 )
 
 from discord.errors import NotFound
@@ -24,7 +20,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
-from commands import gemini, skullboard
+from commands import gemini, skullboard, help_menu
 from utils import time
 
 # Load environment variables from .env file
@@ -171,166 +167,12 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
         )
 
 
-class HelpMenu(ui.View):
-    currentpage: int = 0
-    commands = []
-
-    def __init__(self):
-        super().__init__()
-        self.value = None
-        self.commands = list(
-            client.tree.get_commands(guild=Object(GUILD_ID))
-        )  # Gets commands on class creation
-
-    # Create and return new embed
-    def create_help_embed(self, page: int):
-        if page < 0:
-            self.currentpage = 0
-        elif page > len(self.commands):
-            self.currentpage = len(self.commands) - 1
-        else:
-            self.currentpage = page
-
-        # Disable buttons in invalid states (using or does not work)
-        for item in self.children:
-            if isinstance(item, ui.Button):
-                if item.label == "Next":
-                    item.disabled = self.currentpage >= len(self.commands) - 1
-                if item.label == "End":
-                    item.disabled = self.currentpage >= len(self.commands) - 1
-                if item.label == "Back":
-                    item.disabled = self.currentpage == 0
-                if item.label == "Start":
-                    item.disabled = self.currentpage == 0
-
-        # Define embed
-        embed = Embed(
-            title="Invalid embed",
-            description="Something went wrong!",
-            color=Color.yellow(),
-        )
-
-        if self.currentpage < 0:  # Log invalid case for current page
-            logging.warning(
-                f"Help Menu: Invalid Help page of value {self.currentpage} was created."
-            )
-
-        if (
-            self.currentpage == 0
-        ):  # Main help menu for displaying different groups with limited detail
-            embed = Embed(
-                title="DuckBot",
-                description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
-                color=Color.yellow(),
-            )
-            # Adding group names
-            for command in self.commands:
-                if isinstance(command, app_commands.Group):
-                    embed.add_field(
-                        name=f"/{command.name}",
-                        value=f"{command.description}",
-                        inline=False,
-                    )
-            # Misc command
-            embed.add_field(name="Misc", value="Miscellaneous commands:", inline=False)
-            for command in self.commands:
-                if not isinstance(command, app_commands.Group):
-                    embed.add_field(
-                        name=f"/{command.name}",
-                        value=f"{command.description}",
-                        inline=False,
-                    )
-
-        elif self.currentpage > 0:  # Menu for differnt groups
-            command = self.commands[self.currentpage]
-            # Adding fields for groups
-            if isinstance(command, app_commands.Group):
-                embed = Embed(
-                    title=f"{command.name} commands",
-                    description=f"{command.description}",
-                    color=Color.yellow(),
-                )
-                for subcommand in command.commands:
-                    embed.add_field(
-                        name=f"/{command.name} {subcommand.name}",
-                        value=subcommand.description,
-                        inline=True,
-                    )
-            # Adding field for standalone command
-            else:
-                embed = Embed(
-                    title=f"/{command.name}",
-                    description=command.description,
-                    color=Color.yellow(),
-                )
-        return embed
-
-    # Update the options in select menu
-    def update_select_options(self):
-        options = []
-        for i, command in enumerate(self.commands):
-            if isinstance(command, app_commands.Group):
-                label = f"{command.name} (Group)"
-            else:
-                label = f"{command.name}"
-            options.append(
-                SelectOption(label=label, value=str(i), description=command.description)
-            )
-
-            for item in self.children:
-                if isinstance(item, ui.Select):
-                    item.options = options
-
-    """
-    buttons change currentpage to corresponding value
-    """
-
-    @ui.button(label="Start", style=ButtonStyle.primary)
-    async def menu_start(self, interaction: Interaction, button: ui.Button):
-        self.currentpage = 0
-        embed = self.create_help_embed(self.currentpage)
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @ui.button(label="Back", style=ButtonStyle.primary)
-    async def menu_back(self, interaction: Interaction, button: ui.Button):
-        self.currentpage -= 1
-        embed = self.create_help_embed(self.currentpage)
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @ui.button(label="Next", style=ButtonStyle.primary)
-    async def menu_next(self, interaction: Interaction, button: ui.Button):
-        self.currentpage += 1
-        embed = self.create_help_embed(self.currentpage)
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @ui.button(label="End", style=ButtonStyle.primary)
-    async def menu_end(self, interaction: Interaction, button: ui.Button):
-        self.currentpage = len(self.commands) - 1
-        embed = self.create_help_embed(self.currentpage)
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    # Select menu changes menu to selected
-    @ui.select(
-        placeholder="Select a command or group...",
-        min_values=1,
-        max_values=1,
-        options=[],
-    )
-    async def help_select_callback(self, interaction: Interaction, select: ui.Select):
-        # Get the selected index and update the current page
-        selected_index = int(select.values[0])
-        self.currentpage = selected_index
-
-        embed = self.create_help_embed(selected_index)
-        await interaction.response.edit_message(embed=embed, view=self)
-
-
 @client.tree.command(
     description="View useful information about using the bot.",
     guild=Object(GUILD_ID),
 )
 async def help(interaction: Interaction):
-    Help_Menu_View = HelpMenu()  # Creating the view for buttons
+    Help_Menu_View = help_menu.HelpMenu(client)  # Creating the view for buttons
     Help_Menu_View.update_select_options()  # Creating options for select menu
     embed = Help_Menu_View.create_help_embed(0)
     await interaction.response.send_message(embed=embed, view=Help_Menu_View)
