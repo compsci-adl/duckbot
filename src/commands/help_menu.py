@@ -40,7 +40,6 @@ class HelpMenu(ui.View):
                 self.maxpages += 1
             else:
                 self.misc_commands.append(command)
-        print(self.maxpages)
 
     # Create and return new embed
     def create_help_embed(self, page: int):
@@ -133,7 +132,6 @@ class HelpMenu(ui.View):
                     value=f"{command.description}",
                     inline=False,
                 )
-        print(self.currentpage)
         return embed
 
     def total_pages(self):
