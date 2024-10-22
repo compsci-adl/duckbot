@@ -175,7 +175,7 @@ async def help(interaction: Interaction):
     Help_Menu_View = help_menu.HelpMenu(client)  # Creating the view for buttons
     Help_Menu_View.update_select_options()  # Creating options for select menu
     embed = Help_Menu_View.create_help_embed(0)
-    await interaction.response.send_message(embed=embed, view=Help_Menu_View)
+    await interaction.response.send_message(embed=embed, view=Help_Menu_View, ephemeral=True)
 
 
 # Ignore non-slash commands
