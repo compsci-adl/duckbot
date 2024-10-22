@@ -10,17 +10,17 @@ from discord import (
     Object,
     Interaction,
     Embed,
-    Color,
     Message,
     RawReactionActionEvent,
     Attachment,
 )
+
 from discord.errors import NotFound
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
-from commands import gemini, skullboard
+from commands import gemini, skullboard, help_menu
 from utils import time
 
 # Load environment variables from .env file
@@ -172,30 +172,10 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
     guild=Object(GUILD_ID),
 )
 async def help(interaction: Interaction):
-    commands = list(client.tree.get_commands(guild=Object(GUILD_ID)))
-    embed = Embed(
-        title="DuckBot",
-        description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
-        color=Color.yellow(),
-    )
-    for command in commands:
-        if isinstance(command, app_commands.Group):
-            # Add the group name
-            embed.add_field(
-                name=f"/{command.name}", value=f"{command.description}", inline=False
-            )
-            # Add each subcommand in the group
-            for subcommand in command.commands:
-                embed.add_field(
-                    name=f"/{command.name} {subcommand.name}",
-                    value=subcommand.description,
-                    inline=True,
-                )
-        else:
-            embed.add_field(
-                name=f"/{command.name}", value=command.description, inline=False
-            )
-    await interaction.response.send_message(embed=embed)
+    Help_Menu_View = help_menu.HelpMenu(client)  # Creating the view for buttons
+    Help_Menu_View.update_select_options()  # Creating options for select menu
+    embed = Help_Menu_View.create_help_embed(0)
+    await interaction.response.send_message(embed=embed, view=Help_Menu_View)
 
 
 # Ignore non-slash commands
