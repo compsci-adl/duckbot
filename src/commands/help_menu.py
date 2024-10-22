@@ -165,34 +165,30 @@ class HelpMenu(ui.View):
 
     # Buttons change currentpage to corresponding value
 
-    """Start menu button"""
-
     @ui.button(label="Start", style=ButtonStyle.primary)
     async def menu_start(self, interaction: Interaction, button: ui.Button):
+        """Start menu button"""
         self.currentpage = 0
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
 
-    """Back button"""
-
     @ui.button(label="Back", style=ButtonStyle.primary)
     async def menu_back(self, interaction: Interaction, button: ui.Button):
+        """Back button"""
         self.currentpage -= 1
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
 
-    """Next button"""
-
     @ui.button(label="Next", style=ButtonStyle.primary)
     async def menu_next(self, interaction: Interaction, button: ui.Button):
+        """Next button"""
         self.currentpage += 1
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
 
-    """End menu button"""
-
     @ui.button(label="End", style=ButtonStyle.primary)
     async def menu_end(self, interaction: Interaction, button: ui.Button):
+        """End menu button"""
         self.currentpage = self.maxpages
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
