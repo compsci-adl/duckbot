@@ -1,4 +1,3 @@
-import logging
 import os
 
 from discord import (
@@ -26,14 +25,15 @@ class HelpMenu(ui.View):
         self.commands = list(
             client.tree.get_commands(guild=Object(GUILD_ID))
         )  # Gets commands on class creation
+        
         # Separate group commands and misc commands
         self.group_commands = []
         self.misc_commands = []
         self.maxpages = 1
-        self.organize_commands()
+        self.organise_commands()
 
-    def organize_commands(self):
-        """Organize commands into groups and misc categories."""
+    def organise_commands(self):
+        '''Organise commands into groups and misc categories.'''
         for command in self.commands:
             if isinstance(command, app_commands.Group):
                 self.group_commands.append(command)
@@ -41,8 +41,9 @@ class HelpMenu(ui.View):
             else:
                 self.misc_commands.append(command)
 
-    # Create and return new embed
     def create_help_embed(self, page: int):
+        '''Create and return new embed for given page'''
+        
         # Adjust current page index based on boundaries
         if page < 0:
             self.currentpage = 0
@@ -111,7 +112,7 @@ class HelpMenu(ui.View):
                     for subsubcommand in subcommand.commands:
                         embed.add_field(
                             name=f"/{command.name} {subcommand.name} {subsubcommand.name}",
-                            value=subcommand.description,
+                            value=subsubcommand.description,
                             inline=True,
                         )
                 else:
@@ -135,11 +136,11 @@ class HelpMenu(ui.View):
         return embed
 
     def total_pages(self):
-        """Calculate total pages: 1 for grouped commands, 1 for misc commands, and 1 for each group."""
+        '''Calculate total pages: 1 for grouped commands, 1 for misc commands, and 1 for each group.'''
         return 2 + len(self.group_commands)
 
-    # Update the options in select menu
     def update_select_options(self):
+        '''Update options in the select menu'''
         options = []
         for i, command in enumerate(self.group_commands):
             label = f"{command.name}"
@@ -158,31 +159,35 @@ class HelpMenu(ui.View):
                 item.options = options
 
     def capfirst(self, string):
+        '''Capitalize the first letter of string argument'''
         newstring = string[0].upper() + string[1:].lower()
         return newstring
 
-    """
-    buttons change currentpage to corresponding value
-    """
-
+    
+    # Buttons change currentpage to corresponding value
+    
+    '''Start menu button'''
     @ui.button(label="Start", style=ButtonStyle.primary)
     async def menu_start(self, interaction: Interaction, button: ui.Button):
         self.currentpage = 0
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
-
+    
+    '''Back button'''
     @ui.button(label="Back", style=ButtonStyle.primary)
     async def menu_back(self, interaction: Interaction, button: ui.Button):
         self.currentpage -= 1
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
 
+    '''Next button'''
     @ui.button(label="Next", style=ButtonStyle.primary)
     async def menu_next(self, interaction: Interaction, button: ui.Button):
         self.currentpage += 1
         embed = self.create_help_embed(self.currentpage)
         await interaction.response.edit_message(embed=embed, view=self)
 
+    '''End menu button'''
     @ui.button(label="End", style=ButtonStyle.primary)
     async def menu_end(self, interaction: Interaction, button: ui.Button):
         self.currentpage = self.maxpages
@@ -197,7 +202,7 @@ class HelpMenu(ui.View):
         options=[],
     )
     async def help_select_callback(self, interaction: Interaction, select: ui.Select):
-        # Get the selected index and update the current page
+        ''' Get the selected index and update the current page '''
         selected_index = int(select.values[0])
         self.currentpage = selected_index
 
