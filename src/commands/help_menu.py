@@ -142,10 +142,19 @@ class HelpMenu(ui.View):
     def update_select_options(self):
         """Update options in the select menu"""
         options = []
+        options.append(
+            SelectOption(
+                label="DuckBot",
+                value=0,
+                description="DuckBot is the CS Club's Discord bot, created by the CS Club Open Source Team.",
+            )
+        )
         for i, command in enumerate(self.group_commands):
             label = f"{command.name}"
             options.append(
-                SelectOption(label=label, value=str(i), description=command.description)
+                SelectOption(
+                    label=label, value=str(i + 1), description=command.description
+                )
             )
         options.append(
             SelectOption(
