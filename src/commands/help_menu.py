@@ -81,7 +81,7 @@ class HelpMenu(ui.View):
             # Adding group names
             for command in self.group_commands:
                 embed.add_field(
-                    name=f"/{command.name}",
+                    name=f"{self.capfirst(command.name)}",
                     value=f"{command.description}",
                     inline=False,
                 )
@@ -91,7 +91,7 @@ class HelpMenu(ui.View):
             )
             for command in self.misc_commands:
                 embed.add_field(
-                    name=f"/{command.name}",
+                    name=f"{self.capfirst(command.name)}",
                     value=f"{command.description}",
                     inline=False,
                 )
@@ -102,7 +102,7 @@ class HelpMenu(ui.View):
             command = self.group_commands[self.currentpage - 1]
             # Adding fields for groups
             embed = Embed(
-                title=f"{command.name} Commands",
+                title=f"{self.capfirst(command.name)} Commands",
                 description=f"{command.description}",
                 color=Color.yellow(),
             )
@@ -156,6 +156,10 @@ class HelpMenu(ui.View):
         for item in self.children:
             if isinstance(item, ui.Select):
                 item.options = options
+
+    def capfirst(self, string):
+        newstring = string[0].upper() + string[1:].lower()
+        return newstring
 
     """
     buttons change currentpage to corresponding value
