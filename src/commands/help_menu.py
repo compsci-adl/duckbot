@@ -213,5 +213,6 @@ class HelpMenu(ui.View):
         """Get the selected index and update the current page"""
         selected_index = int(select.values[0])
         self.currentpage = selected_index
+
         embed = self.create_help_embed(selected_index)
         await interaction.response.edit_message(embed=embed, view=self)
