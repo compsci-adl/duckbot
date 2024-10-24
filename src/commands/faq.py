@@ -1,7 +1,7 @@
 import datetime as dt
 import pytz
 from math import floor, ceil
-from discord import app_commands, Interaction
+from discord import app_commands, Interaction, File
 
 
 class FAQGroup(app_commands.Group):
@@ -26,6 +26,12 @@ class FAQGroup(app_commands.Group):
             "https://acpc.io/\n"
         )
         await interaction.response.send_message(cpc_info)
+
+    @app_commands.command(name="drive", description="Access CS Club Drive")
+    async def drive(self, interaction: Interaction):
+        drive_info = "Access the CS Club Drive through your CS Club account at https://csclub.org.au/\n"
+        drive_image = File("assets/drive.png")
+        await interaction.response.send_message(drive_info, file=drive_image)
 
 
 class FNGGroup(app_commands.Group):
