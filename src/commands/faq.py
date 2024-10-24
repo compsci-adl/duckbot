@@ -29,7 +29,7 @@ class FAQGroup(app_commands.Group):
 
     @app_commands.command(name="drive", description="Access CS Club Drive")
     async def drive(self, interaction: Interaction):
-        drive_info = "Access the CS Club Drive through your CS Club account here:\n"
+        drive_info = "Access the CS Club Drive through your CS Club account at https://csclub.org.au/\n"
         drive_image = File("assets/drive.png")
         await interaction.response.send_message(drive_info, file=drive_image)
 
