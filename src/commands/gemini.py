@@ -303,7 +303,7 @@ class GeminiBot:
             )
             return [
                 Embed(
-                    title="Ask Gemini",
+                    title="Ask DuckBot",
                     description="The attachment is invalid and no text input is provided.",
                     color=LIGHT_YELLOW,
                 )
@@ -340,7 +340,6 @@ class GeminiBot:
 
                 try:
                     self.chat.history = []
-                    delete_files()
                 except Exception as e:
                     logging.error(
                         f"Error during file deletion or clearing chat history: {e}"
@@ -392,23 +391,6 @@ def return_genai_file_ref(file_name):
             return file
 
     return None
-
-
-def delete_files():
-    """Delete all attachment files"""
-
-    try:
-        files = genai.list_files()
-        for file in files:
-            try:
-                genai.delete_file(file.name)
-                logging.info(f"Deleted file {file.name} from Google Gemini.")
-            except google.api_core.exceptions.PermissionDenied:
-                logging.error(f"Permission Denied: Unable to delete file {file.name}.")
-            except Exception as e:
-                logging.error(f"Error deleting file {file.name}: {e}")
-    except Exception as e:
-        logging.error(f"Error listing files for deletion: {e}")
 
 
 def is_valid_ext_size(author, file) -> Errors:
