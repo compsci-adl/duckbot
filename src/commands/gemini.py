@@ -200,9 +200,9 @@ class GeminiBot:
         split_message = [response.text[i : i + 1024] for i in list_index]
 
         for i in range(len(split_message)):
-            # If first embed, title should be Ask Gemini
+            # If first embed, title should be Ask DuckBot
             if i == 0:
-                response_embed = Embed(title="Ask Gemini", color=LIGHT_YELLOW)
+                response_embed = Embed(title="Ask DuckBot", color=LIGHT_YELLOW)
             else:
                 response_embed = Embed(
                     title=f"Continued Answer {i}/{len(split_message)-1}",

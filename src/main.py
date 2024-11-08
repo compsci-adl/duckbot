@@ -129,7 +129,7 @@ async def ping(interaction: Interaction):
     await interaction.response.send_message("Pong!", ephemeral=True)
 
 
-@client.tree.command(description="Ask Gemini anything!", guild=Object(GUILD_ID))
+@client.tree.command(description="Ask DuckBot anything!", guild=Object(GUILD_ID))
 async def chat(interaction: Interaction, query: str | None, file: Attachment | None):
 
     try:
