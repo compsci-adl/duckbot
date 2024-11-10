@@ -195,7 +195,9 @@ async def on_message(message: Message):
         bot_response = await client.gemini_model.query(
             author_id=message.author.id,
             author=message.author.display_name,
-            message=message.clean_content.replace("d.chat", ""),
+            message=message.content.replace("d.chat", "")
+            .replace(f"<@{client.user.id}>", "")
+            .strip(),
             attachment=attachment,
         )
         await message.reply(embeds=bot_response, mention_author=False)
