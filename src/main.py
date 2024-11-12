@@ -20,7 +20,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
-from commands import gemini, skullboard, help_menu
+from commands import gemini, skullboard, help_menu, admin_commands
 from utils import time
 
 # Load environment variables from .env file
@@ -68,6 +68,9 @@ class DuckBot(commands.Bot):
             bot=self,
             api_key=GEMINI_API_KEY,
         )
+
+        self.admin_commands = admin_commands.AdminCommands(gemini_bot=self.gemini_model)
+        self.tree.add_command(self.admin_commands, guild=Object(GUILD_ID))
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory

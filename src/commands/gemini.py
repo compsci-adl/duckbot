@@ -347,6 +347,18 @@ class GeminiBot:
 
         return response_embeds
 
+    def clear_chat_history(self):
+        """Clears all conversation history for the chat context."""
+        try:
+            # Clear the stored chat history if maintained within self.chat
+            if hasattr(self, "chat"):
+                self.chat.history = []
+                logging.info("Gemini chat history has been successfully reset.")
+            else:
+                logging.warning("No chat history found to clear.")
+        except Exception as e:
+            logging.error(f"Error while resetting Gemini chat history: {e}")
+
 
 async def upload_or_return_file_ref(attachment) -> (File, Errors):
     """Uploads the image to the Google Gemini Project
