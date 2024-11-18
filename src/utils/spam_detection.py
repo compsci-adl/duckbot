@@ -79,7 +79,9 @@ async def check_spam(message):
 
         try:
             # Timeout the user for 1 day
-            await member.timeout(datetime.timedelta(days=1), reason="Sending spam messages")
+            await member.timeout(
+                datetime.timedelta(days=1), reason="Sending spam messages"
+            )
             print(f"User {member} has been timed out for 1 day.")
         except Exception as e:
             print(f"An error occurred: {e}")
