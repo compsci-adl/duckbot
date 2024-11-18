@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
 from commands import gemini, skullboard, help_menu
-from utils import time
+from utils import time, spam_detection
 
 # Load environment variables from .env file
 load_dotenv()
@@ -183,9 +183,19 @@ async def help(interaction: Interaction):
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
-    # Ignore DMs by checking if the message was sent in a server
-    if message.guild is None:
+    # Ignore DMs and bot's own messages
+    if message.guild is None or message.author.bot:
         return
+
+    # Count user's messages in channel
+    count = 0
+    async for msg in message.channel.history(limit=None):
+        if msg.author.id == message.author.id:
+            count += 1
+
+    # If the user has sent less than 3 messages in the channel, check for spam
+    if count < 3:
+        await spam_detection.check_spam(message)
 
     if (
         client.user.mentioned_in(message) or "d.chat" in message.clean_content
