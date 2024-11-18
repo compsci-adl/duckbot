@@ -1,6 +1,7 @@
 import os
 import logging
 from discord import app_commands, Interaction
+from models.admin_settings_db import AdminSettingsDB
 
 # Retrieve the list of admin usernames from the .env file
 ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")
@@ -9,9 +10,12 @@ ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")
 class AdminCommands(app_commands.Group):
     def __init__(self, gemini_bot):
         super().__init__(name="admin", description="Admin commands for DuckBot setup.")
+        
+        # Initialize the database
+        self.settings_db = AdminSettingsDB()
 
         # Add subgroups to the main admin group
-        self.set = SetSubGroup(self.check_admin)
+        self.set = SetSubGroup(self.check_admin, self.settings_db)
         self.reset = ResetSubGroup(self.check_admin, gemini_bot)
 
         # Register subgroups
@@ -26,36 +30,26 @@ class AdminCommands(app_commands.Group):
             logging.info(f"User {user_name} is authorized.")
             return True
         else:
+            await interaction.response.send_message("You don't have permission to execute that command.", ephemeral=True)
             logging.warning(f"User {user_name} is not authorized.")
             return False
 
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        """Restrict all admin commands visibility to authorized users only."""
-        is_admin = await self.check_admin(interaction)
-        if is_admin:
-            return True
-        await interaction.response.send_message("Unauthorized", ephemeral=True)
-        return False
-
     @app_commands.command(
-        name="log-info", description="Display all current environment variables."
+        name="log-variables", description="Display all current environment variables."
     )
     async def log_info(self, interaction: Interaction):
         """Command to log and display all relevant environment variables."""
         if not await self.check_admin(interaction):
-            await interaction.response.send_message("Unauthorized", ephemeral=True)
             return
 
-        # Collect environment variable values
-        guild_id = os.getenv("GUILD_ID", "Not Set")
-        skullboard_channel_id = os.getenv("SKULLBOARD_CHANNEL_ID", "Not Set")
-        required_reactions = os.getenv("REQUIRED_REACTIONS", "Not Set")
-        tenor_api_key = os.getenv("TENOR_API_KEY", "Not Set")
-        gemini_api_key = os.getenv("GEMINI_API_KEY", "Not Set")
+        # Get values from database instead of env
+        guild_id = self.settings_db.get_setting("GUILD_ID") or "Not Set"
+        skullboard_channel_id = self.settings_db.get_setting("SKULLBOARD_CHANNEL_ID") or "Not Set"
+        required_reactions = self.settings_db.get_setting("REQUIRED_REACTIONS") or "Not Set"
 
-        # Construct a formatted message for environment variables
+        # Construct message as before
         config_message = (
-            "**Current Environment Variables:**\n"
+            "**Current Settings:**\n"
             f"Guild ID: `{guild_id}`\n"
             f"Skullboard Channel ID: `{skullboard_channel_id}`\n"
             f"Required Reactions: `{required_reactions}`\n"
@@ -65,18 +59,18 @@ class AdminCommands(app_commands.Group):
 
 
 class SetSubGroup(app_commands.Group):
-    def __init__(self, check_admin):
+    def __init__(self, check_admin, settings_db):
         super().__init__(
             name="set", description="Set configuration values for DuckBot."
         )
         self.check_admin = check_admin
+        self.settings_db = settings_db
 
     @app_commands.command(name="guild-id", description="Set the guild ID for DuckBot.")
     async def set_guild_id(self, interaction: Interaction, guild_id: str):
         if not await self.check_admin(interaction):
-            await interaction.response.send_message("Unauthorized", ephemeral=True)
             return
-        os.environ["GUILD_ID"] = guild_id
+        self.settings_db.set_setting("GUILD_ID", guild_id)
         await interaction.response.send_message(
             f"Guild ID set to {guild_id}.", ephemeral=True
         )
@@ -88,9 +82,8 @@ class SetSubGroup(app_commands.Group):
         self, interaction: Interaction, channel_id: str
     ):
         if not await self.check_admin(interaction):
-            await interaction.response.send_message("Unauthorized", ephemeral=True)
             return
-        os.environ["SKULLBOARD_CHANNEL_ID"] = channel_id
+        self.settings_db.set_setting("SKULLBOARD_CHANNEL_ID", channel_id)
         await interaction.response.send_message(
             f"Skullboard channel ID set to {channel_id}.", ephemeral=True
         )
@@ -100,9 +93,8 @@ class SetSubGroup(app_commands.Group):
     )
     async def set_required_reactions(self, interaction: Interaction, reactions: int):
         if not await self.check_admin(interaction):
-            await interaction.response.send_message("Unauthorized", ephemeral=True)
             return
-        os.environ["REQUIRED_REACTIONS"] = str(reactions)
+        self.settings_db.set_setting("REQUIRED_REACTIONS", str(reactions))
         await interaction.response.send_message(
             f"Required reactions set to {reactions}.", ephemeral=True
         )
@@ -117,7 +109,6 @@ class ResetSubGroup(app_commands.Group):
     @app_commands.command(name="chat-history", description="Reset Gemini chat history.")
     async def reset_chat_history(self, interaction: Interaction):
         if not await self.check_admin(interaction):
-            await interaction.response.send_message("Unauthorized", ephemeral=True)
             return
 
         # Call the method to reset Gemini chat history
