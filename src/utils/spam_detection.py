@@ -1,5 +1,12 @@
-from datetime import timedelta
+import datetime
+import discord
+import os
+from dotenv import load_dotenv
 import Levenshtein
+
+# Load environment variables from .env file
+load_dotenv()
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 
 # List of known spam messages
 spam_messages = [
@@ -49,7 +56,6 @@ async def check_spam(message):
     """
     input_message = message.content
     is_spam_flag = is_spam(input_message, spam_messages)
-    print(is_spam_flag)
 
     # If the message is spam, take action
     if is_spam_flag:
@@ -73,7 +79,37 @@ async def check_spam(message):
 
         try:
             # Timeout the user for 1 day
-            await member.timeout(timedelta(days=1), reason="Sending spam messages")
+            await member.timeout(datetime.timedelta(days=1), reason="Sending spam messages")
             print(f"User {member} has been timed out for 1 day.")
         except Exception as e:
             print(f"An error occurred: {e}")
+
+        # Log the spam message
+        try:
+            log_channel = message.guild.get_channel(LOG_CHANNEL_ID)
+
+            embed = discord.Embed(
+                title="Spam Message Detected",
+                description="The following message was flagged as spam, deleted, and the user has been timed out for 1 day. Please review the message, and if confirmed to be spam, ban this member.",
+                color=discord.Color.red(),
+                timestamp=message.created_at,
+            )
+
+            # User information
+            embed.add_field(name="User", value=f"{member.mention}", inline=True)
+
+            # Message details
+            embed.add_field(
+                name="Channel", value=f"{message.channel.mention}", inline=True
+            )
+            embed.add_field(name="Message", value=input_message, inline=False)
+
+            # User profile picture
+            embed.set_thumbnail(
+                url=member.avatar.url if member.avatar else member.default_avatar.url
+            )
+
+            # Send the embed to the log channel
+            await log_channel.send(embed=embed)
+        except Exception as e:
+            print(f"An error occurred while logging the spam message: {e}")
