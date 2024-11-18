@@ -84,6 +84,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           REQUESTS_PER_MINUTE: ${{ secrets.REQUESTS_PER_MINUTE }}
           LIMIT_WINDOW: ${{ secrets.LIMIT_WINDOW }}
+          LOG_CHANNEL_ID: ${{ secrets.LOG_CHANNEL_ID }}
         run: |
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
@@ -98,6 +99,7 @@ jobs:
             echo GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} >> .env
             echo REQUESTS_PER_MINUTE=${{ secrets.REQUESTS_PER_MINUTE }} >> .env
             echo LIMIT_WINDOW=${{ secrets.LIMIT_WINDOW }} >> .env
+            echo LOG_CHANNEL_ID=${{ secrets.LOG_CHANNEL_ID }} >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '
