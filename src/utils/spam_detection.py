@@ -10,12 +10,13 @@ LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 
 # List of known spam messages
 spam_messages = [
-    "Hi! Everyone, please I’m trying to sell my Sabrina Carpenter tickets because I can’t attend the show anymore due to change of plans. Anyone interested should Text me on 202 642 5256",
+    "Hi! Everyone, please I’m trying to sell my Zach Bryan tickets because I can’t attend the show anymore due to change of plans. Anyone interested should text me on WhatsApp +1 (214) 632‑6846",
     "I want to give out my MacBook Air 2020 & Charger** for free, it's in perfect health and good as new, alongside a charger so it's perfect, I want to give it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve ! PM IF YOU ARE INTERESTED OR YOU CAN DM ME FOR MORE INFO",
     "Top University Ghost Tutor Contact Email: ivy.researcher1@gmail.com Instagram: Ivyreseacher1 Telegram:t.me/Ivyresearchers WhatsApp :+44 7878519184 :+12067366194 Courses Engineering (Aerospace, Material, Mechanical, Industrial) Business (Analytics, Statistics, Accounting) Economics (Microeconomics) Management (Supply Chain, MBA) IT & Project Management PolicyTech & Various Engineering Fields Science, Math, Psychology, Philosophy Medical courses Academic Support 24/7 Services include: ✏️ Quizzes & Assignments 🖊️ Reports & Thesis 📝 Essay Writing & More 💻 Online Sessions WhatsApp group: https://chat.whatsapp.com/H5TnqaEp2uy8bHms4ibkDr Message John on WhatsApp. https://wa.me/message/F3QWRUV4EGWVK1 Group 2 https://chat.whatsapp.com/JEJ5TCd7UPSH2LtYMHkrZt",
     "Hey everyone! I’m looking to pass my Sabrina carpenter tickets for footprint center in Phoenix, AZ. Wed,Nov 13. HMU if you’re interested +1 480-719-4319",
     "Hi! Everyone, please I’m trying to sell my Sabrina Carpenter tickets because I can’t attend the show anymore due to change of plans. Anyone interested should DM",
-    "I want to give out my MacBook Air 2020 & Charger** for free, it's in perfect health and good as new, alongside a charger so it's perfect, I want to give it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve ! DM IF YOU ARE INTERESTED",
+    "I want to give out my MacBook 2020 & Charger** for free, it's in perfect health and good as new, alongside a charger so it's perfect, I want to give it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve ! DM IF YOU ARE INTERESTED or on my iMessage…..jaynicky626@gmail.com",
+    "Hi! Everyone, please I’m trying to sell my Billie Eilish tickets because I can’t attend the show anymore due to change of plans. Anyone interested should Text me on (360)-572-6816",
 ]
 
 
