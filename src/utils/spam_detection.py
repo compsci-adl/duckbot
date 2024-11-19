@@ -91,26 +91,23 @@ async def check_spam(message):
         try:
             log_channel = message.guild.get_channel(LOG_CHANNEL_ID)
 
+            # Create an embed to log the spam message
             embed = discord.Embed(
-                title="Spam Message Detected",
-                description="The following message was flagged as spam, deleted, and the user has been timed out for 1 day. Please review the message, and if confirmed to be spam, ban this member.",
+                description=f"**Message sent by {member.mention} in {message.channel.mention} was flagged as spam, deleted, and the user has been timed out for 1 day. Review the message and ban the member if confirmed as spam.**",
                 color=discord.Color.red(),
                 timestamp=message.created_at,
             )
 
-            # User information
-            embed.add_field(name="User", value=f"{member.mention}", inline=True)
+            embed.add_field(name="", value=input_message, inline=False)
 
-            # Message details
-            embed.add_field(
-                name="Channel", value=f"{message.channel.mention}", inline=True
+            embed.set_author(
+                name="Spam Message Detected",
+                icon_url=(
+                    member.avatar.url if member.avatar else member.default_avatar.url
+                ),
             )
-            embed.add_field(name="Message", value=input_message, inline=False)
 
-            # User profile picture
-            embed.set_thumbnail(
-                url=member.avatar.url if member.avatar else member.default_avatar.url
-            )
+            embed.set_footer(text=f"User ID: {member.id} | Message ID: {message.id}")
 
             # Send the embed to the log channel
             await log_channel.send(embed=embed)
