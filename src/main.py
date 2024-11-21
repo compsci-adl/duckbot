@@ -33,6 +33,7 @@ SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 TENOR_API_KEY = os.environ["TENOR_API_KEY"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 SPAM_CHECK_MIN_MSG = 3
+MESSAGE_HISTORY_LIMIT = 1000
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
@@ -190,9 +191,12 @@ async def on_message(message: Message):
 
     # Count user's messages in channel
     count = 0
-    async for msg in message.channel.history(limit=None):
+    async for msg in message.channel.history(limit=MESSAGE_HISTORY_LIMIT):
         if msg.author.id == message.author.id:
             count += 1
+            # Exit early if count exceeds SPAM_CHECK_MIN_MSG
+            if count >= SPAM_CHECK_MIN_MSG:
+                break
 
     # If the user has sent less than SPAM_CHECK_MIN_MSG messages in the channel, check for spam
     if count < SPAM_CHECK_MIN_MSG:
