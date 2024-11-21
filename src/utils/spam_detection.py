@@ -20,7 +20,6 @@ spam_messages = [
 ]
 
 
-# Function to calculate normalised Levenshtein distance and detect spam
 def is_spam(input_message, spam_messages, threshold=0.2):
     """
     Detects if the input message is similar to known spam messages based on Levenshtein distance.
@@ -83,7 +82,9 @@ async def check_spam(message):
             await member.timeout(
                 datetime.timedelta(days=1), reason="Sending spam messages"
             )
-            print(f"User {member} has been timed out for 1 day.")
+            print(
+                f"User {member} has been timed out for 1 day for sending spam messages."
+            )
         except Exception as e:
             print(f"An error occurred: {e}")
 
@@ -93,7 +94,7 @@ async def check_spam(message):
 
             # Create an embed to log the spam message
             embed = discord.Embed(
-                description=f"**Message sent by {member.mention} in {message.channel.mention} was flagged as spam, deleted, and the user has been timed out for 1 day. Review the message and ban the member if confirmed as spam.**",
+                description=f"**Message sent by {member.mention} in {message.channel.mention} was flagged as spam, deleted, and the user has been timed out for 1 day. Review the message and take appropriate action if confirmed as spam.**",
                 color=discord.Color.red(),
                 timestamp=message.created_at,
             )

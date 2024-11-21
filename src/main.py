@@ -32,6 +32,7 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 TENOR_API_KEY = os.environ["TENOR_API_KEY"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+SPAM_CHECK_MIN_MSG = 3
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
@@ -193,8 +194,8 @@ async def on_message(message: Message):
         if msg.author.id == message.author.id:
             count += 1
 
-    # If the user has sent less than 3 messages in the channel, check for spam
-    if count < 3:
+    # If the user has sent less than SPAM_CHECK_MIN_MSG messages in the channel, check for spam
+    if count < SPAM_CHECK_MIN_MSG:
         await spam_detection.check_spam(message)
 
     if (
