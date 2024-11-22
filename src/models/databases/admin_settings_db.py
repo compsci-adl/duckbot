@@ -1,8 +1,7 @@
 import os
 import sqlite3
-import logging
 from pathlib import Path
-from .schema.admin_settings_sql import AdminSettingsSQL
+from models.schema.admin_settings_sql import AdminSettingsSQL
 
 class AdminSettingsDB:
     def __init__(self, db_path: str = "db/admin_settings.db"):
@@ -16,7 +15,7 @@ class AdminSettingsDB:
         return sqlite3.connect(self.db_path)
 
     def init_db(self):
-        """Initialize the database with tables and default values from .env"""
+        """Initialise the database with tables and default values from .env"""
         with self.get_db_connection() as conn:
             cursor = conn.cursor()
             
@@ -24,7 +23,7 @@ class AdminSettingsDB:
             for statement in AdminSettingsSQL.initialisation_tables:
                 cursor.execute(statement)
 
-            # Initialize with default values from .env
+            # Initialise with default values from .env
             default_settings = {
                 "GUILD_ID": os.getenv("GUILD_ID", ""),
                 "SKULLBOARD_CHANNEL_ID": os.getenv("SKULLBOARD_CHANNEL_ID", ""),

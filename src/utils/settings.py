@@ -1,7 +1,7 @@
 from models.admin_settings_db import AdminSettingsDB
 import os
 
-def get_setting(key: str, default: str = None) -> str:
+def get_setting_with_fallback(key: str, default: str = None) -> str:
     """Get a setting from the database, falling back to env vars if not found"""
     db = AdminSettingsDB()
     value = db.get_setting(key)

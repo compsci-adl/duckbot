@@ -1,7 +1,7 @@
 import os
 import logging
-from discord import app_commands, Interaction
-from models.admin_settings_db import AdminSettingsDB
+from discord import app_commands, Interaction, Embed
+from models.databases.admin_settings_db import AdminSettingsDB
 
 # Retrieve the list of admin usernames from the .env file
 ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")
@@ -11,7 +11,7 @@ class AdminCommands(app_commands.Group):
     def __init__(self, gemini_bot):
         super().__init__(name="admin", description="Admin commands for DuckBot setup.")
         
-        # Initialize the database
+        # Initialise the database
         self.settings_db = AdminSettingsDB()
 
         # Add subgroups to the main admin group
@@ -27,11 +27,11 @@ class AdminCommands(app_commands.Group):
         logging.info(f"Checking admin status for user: {user_name}")
 
         if user_name in ADMIN_USERS:
-            logging.info(f"User {user_name} is authorized.")
+            logging.info(f"User {user_name} is authorised.")
             return True
         else:
             await interaction.response.send_message("You don't have permission to execute that command.", ephemeral=True)
-            logging.warning(f"User {user_name} is not authorized.")
+            logging.warning(f"User {user_name} is not authorised.")
             return False
 
     @app_commands.command(
@@ -47,15 +47,15 @@ class AdminCommands(app_commands.Group):
         skullboard_channel_id = self.settings_db.get_setting("SKULLBOARD_CHANNEL_ID") or "Not Set"
         required_reactions = self.settings_db.get_setting("REQUIRED_REACTIONS") or "Not Set"
 
-        # Construct message as before
-        config_message = (
-            "**Current Settings:**\n"
-            f"Guild ID: `{guild_id}`\n"
-            f"Skullboard Channel ID: `{skullboard_channel_id}`\n"
-            f"Required Reactions: `{required_reactions}`\n"
+        embed = Embed(
+            title="Current Settings",
+            color=0x00ff00
         )
+        embed.add_field(name="Guild ID", value=f"`{guild_id}`", inline=False)
+        embed.add_field(name="Skullboard Channel ID", value=f"`{skullboard_channel_id}`", inline=False)
+        embed.add_field(name="Required Reactions", value=f"`{required_reactions}`", inline=False)
 
-        await interaction.response.send_message(config_message, ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class SetSubGroup(app_commands.Group):
