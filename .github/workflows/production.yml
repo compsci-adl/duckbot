@@ -99,6 +99,7 @@ jobs:
             echo GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} >> .env
             echo REQUESTS_PER_MINUTE=${{ secrets.REQUESTS_PER_MINUTE }} >> .env
             echo LIMIT_WINDOW=${{ secrets.LIMIT_WINDOW }} >> .env
+            echo ADMIN_USERS=${{ secrets.ADMIN_USERS }} >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '
