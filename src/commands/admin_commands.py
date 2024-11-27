@@ -10,7 +10,7 @@ ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")
 class AdminCommands(app_commands.Group):
     def __init__(self, gemini_bot):
         super().__init__(name="admin", description="Admin commands for DuckBot setup.")
-        
+
         # Initialise the database
         self.settings_db = AdminSettingsDB()
 
@@ -30,7 +30,9 @@ class AdminCommands(app_commands.Group):
             logging.info(f"User {user_name} is authorised.")
             return True
         else:
-            await interaction.response.send_message("You don't have permission to execute that command.", ephemeral=True)
+            await interaction.response.send_message(
+                "You don't have permission to execute that command.", ephemeral=True
+            )
             logging.warning(f"User {user_name} is not authorised.")
             return False
 
@@ -44,16 +46,23 @@ class AdminCommands(app_commands.Group):
 
         # Get values from database instead of env
         guild_id = self.settings_db.get_setting("GUILD_ID") or "Not Set"
-        skullboard_channel_id = self.settings_db.get_setting("SKULLBOARD_CHANNEL_ID") or "Not Set"
-        required_reactions = self.settings_db.get_setting("REQUIRED_REACTIONS") or "Not Set"
-
-        embed = Embed(
-            title="Current Settings",
-            color=0x00ff00
+        skullboard_channel_id = (
+            self.settings_db.get_setting("SKULLBOARD_CHANNEL_ID") or "Not Set"
         )
+        required_reactions = (
+            self.settings_db.get_setting("REQUIRED_REACTIONS") or "Not Set"
+        )
+
+        embed = Embed(title="Current Settings", color=0x00FF00)
         embed.add_field(name="Guild ID", value=f"`{guild_id}`", inline=False)
-        embed.add_field(name="Skullboard Channel ID", value=f"`{skullboard_channel_id}`", inline=False)
-        embed.add_field(name="Required Reactions", value=f"`{required_reactions}`", inline=False)
+        embed.add_field(
+            name="Skullboard Channel ID",
+            value=f"`{skullboard_channel_id}`",
+            inline=False,
+        )
+        embed.add_field(
+            name="Required Reactions", value=f"`{required_reactions}`", inline=False
+        )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
