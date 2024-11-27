@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 
 from constants.colours import LIGHT_YELLOW
 from commands import gemini, skullboard, help_menu, admin_commands
-from utils import time
+from utils import time, spam_detection
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,6 +32,8 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
 TENOR_API_KEY = os.environ["TENOR_API_KEY"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+SPAM_CHECK_MIN_MSG = 3
+MESSAGE_HISTORY_LIMIT = 1000
 
 # Load the permissions the bot has been granted in the previous configuration
 intents = Intents.default()
@@ -186,9 +188,22 @@ async def help(interaction: Interaction):
 # Ignore non-slash commands
 @client.event
 async def on_message(message: Message):
-    # Ignore DMs by checking if the message was sent in a server
-    if message.guild is None:
+    # Ignore DMs and bot's own messages
+    if message.guild is None or message.author.bot:
         return
+
+    # Count user's messages in channel
+    count = 0
+    async for msg in message.channel.history(limit=MESSAGE_HISTORY_LIMIT):
+        if msg.author.id == message.author.id:
+            count += 1
+            # Exit early if count exceeds SPAM_CHECK_MIN_MSG
+            if count >= SPAM_CHECK_MIN_MSG:
+                break
+
+    # If the user has sent less than SPAM_CHECK_MIN_MSG messages in the channel, check for spam
+    if count < SPAM_CHECK_MIN_MSG:
+        await spam_detection.check_spam(message)
 
     if (
         client.user.mentioned_in(message) or "d.chat" in message.clean_content
