@@ -21,6 +21,7 @@ To get started, please follow these steps:
 
     ```sh
     uv sync
+    uv run pre-commit install
     ```
 
 3. Copy `.env.example` to a new file `.env` and set required environment variables.
