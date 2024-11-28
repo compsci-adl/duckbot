@@ -2,7 +2,7 @@ import random
 from typing import Optional
 
 import aiohttp
-from discord import app_commands, Interaction, Embed
+from discord import Embed, Interaction, app_commands
 
 from constants.duck_data import DUCK_FACTS, DUCK_JOKES
 from utils.tenor import get_tenor_gif
@@ -39,7 +39,7 @@ class DuckCommands(app_commands.Group):
         gif_url = await get_tenor_gif(search_term)
         if gif_url:
             # Create an embed with the GIF
-            embed = Embed(title=f"Here's a random duck gif!")
+            embed = Embed(title="Here's a random duck gif!")
             embed.set_image(url=gif_url)
             await interaction.followup.send(embed=embed)
         else:

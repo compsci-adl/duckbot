@@ -4,8 +4,9 @@ import re
 from collections import Counter
 from functools import wraps
 from io import BytesIO
-from typing import Callable, Awaitable
+from typing import Awaitable, Callable
 
+import requests
 from discord import (
     AllowedMentions,
     Client,
@@ -17,12 +18,11 @@ from discord import (
 )
 from discord.errors import NotFound
 from discord.utils import MISSING
-import requests
 
 from constants.colours import LIGHT_GREY
+from models.databases.skullboard_database import SkullboardDB
 from utils import time
 from utils.plotting import get_histogram_image
-from models.databases.skullboard_database import SkullboardDB
 
 
 class SkullboardManager:
@@ -458,12 +458,12 @@ class SkullGroup(app_commands.Group):
         user_name = member.name
 
         data = await self.db.get_user_rankings(999999)  # get all
-        data = [(id, freq) for id, freq in data if freq > 0]
+        data = [(u_id, freq) for u_id, freq in data if freq > 0]
 
         if not data:
             raise Exception("Database Error")
 
-        user = [(id, freq) for id, freq in data if id == user_id]
+        user = [(u_id, freq) for u_id, freq in data if u_id == user_id]
         if not user:
             user = [(user_id, 0)]
         _, user_skull_count = user[0]

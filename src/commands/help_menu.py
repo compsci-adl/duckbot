@@ -1,14 +1,14 @@
 import os
 
 from discord import (
-    Object,
-    Embed,
-    ui,
-    Color,
-    app_commands,
-    SelectOption,
     ButtonStyle,
+    Color,
+    Embed,
     Interaction,
+    Object,
+    SelectOption,
+    app_commands,
+    ui,
 )
 
 GUILD_ID = int(os.environ["GUILD_ID"])

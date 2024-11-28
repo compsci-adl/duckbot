@@ -1,19 +1,19 @@
-from enum import IntEnum
 import csv
 import logging
 import os
 import os.path
+import random
 import re
 import tempfile
 import time
 from collections import defaultdict
-import random
-import requests
+from enum import IntEnum
 
-from discord import Embed
-from google.generativeai.types import HarmCategory, HarmBlockThreshold, File
 import google.generativeai as genai
+import requests
+from discord import Embed
 from dotenv import load_dotenv
+from google.generativeai.types import File, HarmBlockThreshold, HarmCategory
 
 from constants.colours import LIGHT_YELLOW
 

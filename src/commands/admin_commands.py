@@ -1,7 +1,12 @@
-import os
 import logging
-from discord import app_commands, Interaction, Embed
+import os
+
+from discord import Embed, Interaction, app_commands
+from dotenv import load_dotenv
+
 from models.databases.admin_settings_db import AdminSettingsDB
+
+load_dotenv()
 
 # Retrieve the list of admin usernames from the .env file
 ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")

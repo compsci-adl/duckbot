@@ -1,4 +1,4 @@
-from discord import app_commands, Interaction
+from discord import Interaction, app_commands
 
 
 class HiGroup(app_commands.Group):

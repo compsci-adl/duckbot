@@ -15,7 +15,7 @@ class AdminSettingsSQL:
     """
 
     set_setting = """
-    INSERT INTO settings (key, value) 
+    INSERT INTO settings (key, value)
     VALUES (?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value;
     """
