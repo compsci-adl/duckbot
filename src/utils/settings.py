@@ -1,5 +1,6 @@
-from models.admin_settings_db import AdminSettingsDB
 import os
+
+from models.admin_settings_db import AdminSettingsDB
 
 
 def get_setting_with_fallback(key: str, default: str = None) -> str:

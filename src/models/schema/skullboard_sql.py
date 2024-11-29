@@ -12,14 +12,14 @@ Tables in this schema include:
 - (posts); posts less than 7 days old are "tracked", and have the skullcount continually updated.
 - (hof); the Hall of Fame which tracks the top 100 posts of all time
 - (users); counts the number of posts which reached a minimum reaction threshold sent by each user.
-- (days); stores the distribution of skull reactions for all posts sent within a day. stores distributions for days between 7 and 365 days ago. 
+- (days); stores the distribution of skull reactions for all posts sent within a day. stores distributions for days between 7 and 365 days ago.
 - (alltime); stores the distribution of skull reactions for all posts sent after 365 days.
 
 Info :
 
 Post tracking:
-Posts up to 7 days old are stored in (posts). 
-These posts are considered "tracked", where the reaction counts to these posts are still updated in the database. 
+Posts up to 7 days old are stored in (posts).
+These posts are considered "tracked", where the reaction counts to these posts are still updated in the database.
 
 Data expiration:
 Posts older than 7 days old in (posts) are no longer "tracked", and are subject to "expiration".
@@ -105,9 +105,9 @@ class SkullSQL:
     """Get the top x posts (maximum of 100) by number of reactions.
     Combines the reaction counts of tracked posts from the last 7 days (posts), in addition to the top posts in the Hall of Fame (hof) table. """
     hof_rankings = """
-    SELECT postId, userId, channelId, day, frequency 
+    SELECT postId, userId, channelId, day, frequency
     FROM (
-    SELECT postId, userId, channelId, day, frequency 
+    SELECT postId, userId, channelId, day, frequency
     FROM posts
     WHERE frequency >= ?
 
@@ -116,7 +116,7 @@ class SkullSQL:
     SELECT postId, userId, channelId, day, frequency
     FROM hof
     )
-    ORDER BY 
+    ORDER BY
     frequency DESC,
     day DESC
     LIMIT ?;

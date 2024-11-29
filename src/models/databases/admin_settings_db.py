@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from pathlib import Path
+
 from models.schema.admin_settings_sql import AdminSettingsSQL
 
 

@@ -1,27 +1,26 @@
-import os
-import importlib
-import pkgutil
 import asyncio
+import importlib
 import logging
+import os
+import pkgutil
 
 from discord import (
-    Intents,
-    app_commands,
-    Object,
-    Interaction,
-    Embed,
-    Message,
-    RawReactionActionEvent,
     Attachment,
+    Embed,
+    Intents,
+    Interaction,
+    Message,
+    Object,
+    RawReactionActionEvent,
+    app_commands,
 )
-
 from discord.errors import NotFound
 from discord.ext import commands
 from dotenv import load_dotenv
 
+from commands import admin_commands, gemini, help_menu, skullboard
 from constants.colours import LIGHT_YELLOW
-from commands import gemini, skullboard, help_menu, admin_commands
-from utils import time, spam_detection
+from utils import spam_detection, time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -61,7 +60,7 @@ class DuckBot(commands.Bot):
             datefmt="%Y-%m-%d %H:%M:%S",
             level=logging.INFO,  # Minimum log level to capture
         )
-        logging.info(f"Started Bot")
+        logging.info("Started Bot")
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
@@ -136,10 +135,9 @@ async def ping(interaction: Interaction):
 
 @client.tree.command(description="Ask DuckBot anything!", guild=Object(GUILD_ID))
 async def chat(interaction: Interaction, query: str | None, file: Attachment | None):
-
     try:
         await interaction.response.defer()
-        query = "" if query == None else query
+        query = "" if query is None else query
         bot_response = await client.gemini_model.query(
             message=query,
             attachment=file,
@@ -176,7 +174,7 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
     description="View useful information about using the bot.",
     guild=Object(GUILD_ID),
 )
-async def help(interaction: Interaction):
+async def help(interaction: Interaction):  # noqa: A001
     Help_Menu_View = help_menu.HelpMenu(client)  # Creating the view for buttons
     Help_Menu_View.update_select_options()  # Creating options for select menu
     embed = Help_Menu_View.create_help_embed(0)

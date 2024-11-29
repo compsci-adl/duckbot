@@ -6,23 +6,22 @@ DuckBot is a Discord bot written in Python using the discord.py library for the 
 
 To get started, please follow these steps:
 
-1. Install Poetry and add it to your PATH if not already installed:
+1. Install `uv` if not already installed:
 
     Linux, macOS, Windows (WSL)
     ```bash
-    curl -sSL https://install.python-poetry.org | python3 -
-    export PATH="$HOME/.local/bin:$PATH"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
     Windows (Powershell)
     ```powershell
-    (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
-    setx PATH "%APPDATA%\Python\Scripts;%PATH%"
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     ```
 
-2. Install the dependencies.
+2. Install dependencies:
 
-    ```bash
-    poetry install
+    ```sh
+    uv sync
+    uv run pre-commit install
     ```
 
 3. Copy `.env.example` to a new file `.env` and set required environment variables.
@@ -30,7 +29,7 @@ To get started, please follow these steps:
 4. Run the bot.
 
     ```bash
-    poetry run python src/main.py
+    uv run python src/main.py
     ```
 
 ## Contributing
