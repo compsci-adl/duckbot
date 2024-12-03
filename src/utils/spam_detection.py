@@ -18,6 +18,7 @@ spam_messages = [
     "Hi! Everyone, please I’m trying to sell my Sabrina Carpenter tickets because I can’t attend the show anymore due to change of plans. Anyone interested should DM",
     "I want to give out my MacBook 2020 & Charger** for free, it's in perfect health and good as new, alongside a charger so it's perfect, I want to give it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve ! DM IF YOU ARE INTERESTED or on my iMessage…..jaynicky626@gmail.com",
     "Hi! Everyone, please I’m trying to sell my Billie Eilish tickets because I can’t attend the show anymore due to change of plans. Anyone interested should Text me on (360)-572-6816",
+    "Hello, I'm Tutor Dublin Assignment/Exam help 🎯 Friendly prices 🎯All hours revision policy 🎯 Good grades guaranteed 🎯 Qualified tutors Assignment/Exam helper👇 📚 Architecture,mechanics,Physics 📚Law, Biology, Engineering courses 📚All math(calc,stats, Algebra...) 📚Html,Css, Design,Angular,Realitics, JavaScript, Python,Canvas 📚 Computer science, Business, Accounting,Finance,Economics ✅ Online classes ✅ Exams&quizzes ✅ Dissertation,thesis&Resumes,C++ ✅ Proofreading&Editing, Proposals ✅ Midterms ✅All courses Why Us? ➡️ Plagiarism free writing ➡️ Timely Delivery ➡️Unlimited Revisions ➡️Refund ✅Email: DublinAssignmentHelp@gmail.com ✅https://wa.link/yegwpz ✅ TELEGRAM:https://t.me/Studentshelper16",
 ]
 
 
