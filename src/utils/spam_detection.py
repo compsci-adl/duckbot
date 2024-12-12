@@ -21,6 +21,8 @@ spam_messages = [
     "Hello, I'm Tutor Dublin Assignment/Exam help 🎯 Friendly prices 🎯All hours revision policy 🎯 Good grades guaranteed 🎯 Qualified tutors Assignment/Exam helper👇 📚 Architecture,mechanics,Physics 📚Law, Biology, Engineering courses 📚All math(calc,stats, Algebra...) 📚Html,Css, Design,Angular,Realitics, JavaScript, Python,Canvas 📚 Computer science, Business, Accounting,Finance,Economics ✅ Online classes ✅ Exams&quizzes ✅ Dissertation,thesis&Resumes,C++ ✅ Proofreading&Editing, Proposals ✅ Midterms ✅All courses Why Us? ➡️ Plagiarism free writing ➡️ Timely Delivery ➡️Unlimited Revisions ➡️Refund ✅Email: DublinAssignmentHelp@gmail.com ✅https://wa.link/yegwpz ✅ TELEGRAM:https://t.me/Studentshelper16",
     "Hi everyone! I don’t know if this would be allowed here but I’m looking to sell my Zach Bryan Tickets. I got them for me and my family but we’ve got an important place to be on that exact date. Anyone interested should Text me on 380 888 6213 or DM",
     "Hi! Does anyone have an idea if I can request a refund or cancel my tickets to Billie Eilish concert on the Dec 13 at the Desert Diamond Arena, Glendale, AZ. I just can't attend anymore. Or if anyone would probably like to buy them off me, I'm willing to make a good deal. Thanks Hmu on 2096804186",
+    "Hey everyone! I’m looking to pass my Rod Wave tickets for Vystar Veterans Memorial Arena in Jacksonville, FL. Mon, Dec 16 at 7:30pm. HMU if you’re interested +1 480-719-4319",
+    "Hi everyone! I'm looking to sell my tickets to BILLIE EILISH on Sun, Dec 15, 7:00pm at Kia forum California HMU if you're interested🫶🏻",
 ]
 
 
