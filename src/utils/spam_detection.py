@@ -26,7 +26,7 @@ spam_messages = [
 ]
 
 
-def is_spam(input_message, spam_messages, threshold=0.2):
+def is_spam(input_message, spam_messages, threshold=0.3):
     """
     Detects if the input message is similar to known spam messages based on Levenshtein distance.
     The distance is normalised, so it ranges from 0 (exact match) to 1 (completely different).
