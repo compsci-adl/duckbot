@@ -36,6 +36,8 @@ class HelpMenu(ui.View):
         """Organise commands into groups and misc categories."""
         for command in self.commands:
             if isinstance(command, app_commands.Group):
+                if command.name == "admin":  # TODO make a variable for ignore
+                    continue
                 self.group_commands.append(command)
                 self.maxpages += 1
             else:
