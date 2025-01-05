@@ -61,12 +61,12 @@ class FNGGroup(app_commands.Group):
         tz = pytz.timezone("Australia/Adelaide")
         # Manually inputting dates
         date_stack = [
-            tz.localize(dt.datetime(2024, 10, 25, 17)),
-            tz.localize(dt.datetime(2024, 8, 30, 17)),
-            tz.localize(dt.datetime(2024, 7, 26, 17)),
-            tz.localize(dt.datetime(2024, 5, 31, 17)),
-            tz.localize(dt.datetime(2024, 4, 26, 17)),
-            tz.localize(dt.datetime(2024, 3, 29, 17)),
+            tz.localize(dt.datetime(2025, 10, 31, 17)),
+            tz.localize(dt.datetime(2025, 9, 19, 17)),
+            tz.localize(dt.datetime(2025, 8, 29, 17)),
+            tz.localize(dt.datetime(2025, 6, 20, 17)),
+            tz.localize(dt.datetime(2025, 5, 30, 17)),
+            tz.localize(dt.datetime(2025, 4, 4, 17)),
         ]
 
         # Checking if the tail date has already passed
@@ -111,6 +111,9 @@ class FNGGroup(app_commands.Group):
 
         # Determining whether date needs a st, nd, rd or rth
         date_num = date_stack[-1].strftime("%d")
+        # Removing zero padding if present
+        if date_num[0] == "0":
+            date_num = date_num[1:]
         date_day = date_stack[-1].strftime("%B")
         time_difference_days = time_difference.days
         if curr_date.time().hour >= 17:
