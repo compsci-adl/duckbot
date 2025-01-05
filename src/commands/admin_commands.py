@@ -48,6 +48,9 @@ class AdminCommands(app_commands.Group):
     )
     async def admin_help(self, interaction: Interaction):
         """Help command containing all admin commands and details"""
+        if not await self.check_admin(interaction):
+            return
+
         embed = Embed(
             title=self.name,
             description=self.description,
