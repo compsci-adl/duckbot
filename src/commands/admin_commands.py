@@ -1,7 +1,7 @@
 import logging
 import os
 
-from discord import Embed, Interaction, app_commands
+from discord import Color, Embed, Interaction, app_commands
 from dotenv import load_dotenv
 
 from models.databases.admin_settings_db import AdminSettingsDB
@@ -28,6 +28,8 @@ class AdminCommands(app_commands.Group):
         self.add_command(self.reset)
 
     async def check_admin(self, interaction: Interaction) -> bool:
+        """Check if the user who called the admin command is an admin"""
+
         user_name = interaction.user.name
         logging.info(f"Checking admin status for user: {user_name}")
 
@@ -40,6 +42,35 @@ class AdminCommands(app_commands.Group):
             )
             logging.warning(f"User {user_name} is not authorised.")
             return False
+
+    @app_commands.command(
+        name="help", description="Display name and description of admin commands"
+    )
+    async def admin_help(self, interaction: Interaction):
+        """Help command containing all admin commands and details"""
+        if not await self.check_admin(interaction):
+            return
+
+        embed = Embed(
+            title=self.name,
+            description=self.description,
+            color=Color.yellow(),
+        )
+        for subcommand in self.walk_commands():
+            if isinstance(subcommand, app_commands.Group):
+                for subsubcommand in subcommand.commands:
+                    embed.add_field(
+                        name=f"/{self.name} {subcommand.name} {subsubcommand.name}",
+                        value=subsubcommand.description,
+                        inline=True,
+                    )
+            else:
+                embed.add_field(
+                    name=f"/{self.name} {subcommand.name}",
+                    value=subcommand.description,
+                    inline=False,
+                )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="log-variables", description="Display all current environment variables."
