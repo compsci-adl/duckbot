@@ -66,7 +66,7 @@ class FNGGroup(app_commands.Group):
             tz.localize(dt.datetime(2025, 8, 29, 17)),
             tz.localize(dt.datetime(2025, 6, 20, 17)),
             tz.localize(dt.datetime(2025, 5, 30, 17)),
-            tz.localize(dt.datetime(2025, 4, 4, 17)),
+            tz.localize(dt.datetime(2025, 3, 28, 17)),
         ]
 
         # Checking if the tail date has already passed
