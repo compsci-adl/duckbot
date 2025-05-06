@@ -24,6 +24,9 @@ spam_messages = [
     "Hey everyone! I’m looking to pass my Rod Wave tickets for Vystar Veterans Memorial Arena in Jacksonville, FL. Mon, Dec 16 at 7:30pm. HMU if you’re interested +1 480-719-4319",
     "Hi everyone! I'm looking to sell my tickets to BILLIE EILISH on Sun, Dec 15, 7:00pm at Kia forum California HMU if you're interested🫶🏻",
     "For anyone who’s enrolled or planning on enrolling I am willing to pass this Apple MacBook Air 9,1 With upmost pleasure, I'm giving out my MacBook Air & Charger for free to a lucky person. It is in perfect health and good as new, alongside a perfectly working charger 💯. I'm giving it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve, no partial, I am a recent alum who would love to help someone save some money even if just a little, I have used this MacBook Air for the entirety of the semester before I graduated PM IF YOU ARE INTERESTED Email me via deppvef@gmail.com",
+    "Hello @everyone! Is there anyone who would be interested in buying my tickets Kendrick Lamar and SZA The Dome at America's Center in St. Louis, MO Wed, Jun 4 at 7:00pm hmu if you’re interested +14157428800",
+    "@everyone I'm giving away my old MacBook 2015 pro, which is in excellent condition and comes with a charger, to someone in need since I've recently upgraded to a new model. It's available on a first-come, first-served basis DM IF YOU ARE INTERESTED",
+    "Hello everyone, Please join our Discord server. This is a community of expert tutors with vast experience in all subjects ready to help you with your homework, online exams, write research papers, complete online classes and other assignments.",
 ]
 
 
