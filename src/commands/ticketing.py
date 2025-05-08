@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import discord
 from discord import Interaction, TextStyle, app_commands
 from discord.ext import commands
@@ -39,7 +41,9 @@ class TicketForm(Modal, title="Create a Ticket"):
                 guild.text_channels, name=ANON_TICKET_CHANNEL_NAME
             )
             embed = discord.Embed(
-                title="New Anonymous Ticket", color=discord.Color.blue()
+                title="New Anonymous Ticket",
+                color=discord.Color.blue(),
+                timestamp=datetime.now(timezone.utc),
             )
             for field in self.children:
                 embed.add_field(
@@ -64,7 +68,11 @@ class TicketForm(Modal, title="Create a Ticket"):
                 topic=f"Ticket created by {interaction.user.display_name}",
             )
 
-            embed = discord.Embed(title="New Ticket", color=discord.Color.green())
+            embed = discord.Embed(
+                title="New Ticket",
+                color=discord.Color.green(),
+                timestamp=datetime.now(timezone.utc),
+            )
             for field in self.children:
                 embed.add_field(
                     name=field.label, value=field.value or "Not Provided", inline=False
