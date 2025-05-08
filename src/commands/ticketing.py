@@ -26,8 +26,7 @@ class TicketForm(Modal, title="Create a Ticket"):
         # Only add these fields if it's a non-anonymous ticket
         if not self.anonymous:
             self.add_item(TextInput(label="Name (optional)", required=False))
-            self.add_item(TextInput(label="Email (optional)", required=False))
-            self.add_item(TextInput(label="Year (optional)", required=False))
+            self.add_item(TextInput(label="Uni Year Level (optional)", required=False))
 
         # Add the details field for both anonymous and non-anonymous tickets
         self.add_item(
