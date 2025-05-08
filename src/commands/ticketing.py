@@ -69,7 +69,7 @@ class TicketForm(Modal, title="Create a Ticket"):
                 embed.add_field(
                     name=field.label, value=field.value or "Not Provided", inline=False
                 )
-            await ticket_channel.send(f"{committee_role.mention}", embed=embed)
+            await ticket_channel.send(embed=embed)
             await interaction.response.send_message(
                 f"Ticket created: {ticket_channel.mention}", ephemeral=True
             )
