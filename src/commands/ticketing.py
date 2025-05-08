@@ -80,7 +80,9 @@ class TicketPanel(View):
         super().__init__(timeout=None)
 
     @discord.ui.button(
-        label="📩 Create Ticket", style=discord.ButtonStyle.green, custom_id="non_anon"
+        label="📩 Create Ticket",
+        style=discord.ButtonStyle.green,
+        custom_id="ticket_panel:create_ticket",
     )
     async def non_anon_ticket(self, interaction: Interaction, button: Button):
         await interaction.response.send_modal(TicketForm(anonymous=False))
@@ -88,7 +90,7 @@ class TicketPanel(View):
     @discord.ui.button(
         label="🕵️ Create Anonymous Ticket",
         style=discord.ButtonStyle.blurple,
-        custom_id="anon",
+        custom_id="ticket_panel:create_anon_ticket",
     )
     async def anon_ticket(self, interaction: Interaction, button: Button):
         await interaction.response.send_modal(TicketForm(anonymous=True))
