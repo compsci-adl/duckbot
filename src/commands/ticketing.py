@@ -10,6 +10,7 @@ COMMITTEE_ROLE_NAME = "Committee"
 ANON_TICKET_CHANNEL_NAME = "anonymous-tickets"
 TICKET_CATEGORY_NAME = "Tickets"
 ARCHIVE_CATEGORY_NAME = "Archived Tickets"
+LOG_CHANNEL_NAME = "bot-log-ticketing"
 
 
 class TicketForm(Modal, title="Create a Ticket"):
@@ -42,6 +43,7 @@ class TicketForm(Modal, title="Create a Ticket"):
         guild = interaction.guild
         committee_role = discord.utils.get(guild.roles, name=COMMITTEE_ROLE_NAME)
         category = discord.utils.get(guild.categories, name=TICKET_CATEGORY_NAME)
+        log_channel = discord.utils.get(guild.text_channels, name=LOG_CHANNEL_NAME)
 
         if self.anonymous:
             # Send anonymous tickets to a dedicated anonymous channel
@@ -61,6 +63,17 @@ class TicketForm(Modal, title="Create a Ticket"):
             await interaction.response.send_message(
                 "Your anonymous ticket has been submitted.", ephemeral=True
             )
+
+            # Log the ticket creation in the log channel
+            if log_channel:
+                await log_channel.send(
+                    embed=discord.Embed(
+                        title="📨 Anonymous Ticket Submitted",
+                        description=f"Ticket submitted in {anon_channel.mention}",
+                        color=discord.Color.blue(),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                )
         else:
             # Create a new ticket channel that only the committee and user can view
             overwrites = {
@@ -105,6 +118,17 @@ class TicketForm(Modal, title="Create a Ticket"):
                 f"Ticket created: {ticket_channel.mention}", ephemeral=True
             )
 
+            # Log the ticket creation in the log channel
+            if log_channel:
+                await log_channel.send(
+                    embed=discord.Embed(
+                        title="📨 Ticket Created",
+                        description=f"{interaction.user.mention} created {ticket_channel.mention}",
+                        color=discord.Color.green(),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                )
+
 
 class CloseReasonModal(Modal, title="Close Ticket"):
     def __init__(self, view: "CloseTicketView"):
@@ -126,6 +150,8 @@ class CloseReasonModal(Modal, title="Close Ticket"):
         archive_category = discord.utils.get(
             guild.categories, name=ARCHIVE_CATEGORY_NAME
         )
+        log_channel = discord.utils.get(guild.text_channels, name=LOG_CHANNEL_NAME)
+
         if archive_category:
             # Send the close reason and embed
             embed = discord.Embed(
@@ -165,6 +191,16 @@ class CloseReasonModal(Modal, title="Close Ticket"):
                 ),
                 ephemeral=True,
             )
+
+            if log_channel:
+                await log_channel.send(
+                    embed=discord.Embed(
+                        title="🔒 Ticket Closed",
+                        description=f"{self.view.channel.mention} closed by {interaction.user.mention}",
+                        color=discord.Color.red(),
+                        timestamp=datetime.now(timezone.utc),
+                    ).add_field(name="Reason", value=self.reason.value, inline=False)
+                )
         else:
             await interaction.response.send_message(
                 "❌ Archive category not found.", ephemeral=True
