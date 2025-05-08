@@ -86,7 +86,7 @@ class TicketForm(Modal, title="Create a Ticket"):
                 name=f"ticket-{interaction.user.name}".lower(),
                 category=category,
                 overwrites=overwrites,
-                topic=f"Ticket created by {interaction.user.display_name} ({interaction.user.id})",
+                topic=f"Ticket created by {interaction.user.display_name}",
             )
 
             # Send a welcome message tagging the user
@@ -169,11 +169,15 @@ class CloseReasonModal(Modal, title="Close Ticket"):
             # Move the channel to the archived category
             await self.view.channel.edit(category=archive_category)
 
-            # Extract the user ID from the topic
-            ticket_creator_id = self.view.channel.topic.split("Ticket created by ")[
-                1
-            ].split(" ")[-1][1:-1]
-            user = guild.get_member(int(ticket_creator_id))
+            # Extract the user ID from the first message in the channel
+            first_message = None
+            async for message in self.view.channel.history(limit=1, oldest_first=True):
+                first_message = message
+                break
+
+            if first_message:
+                user_id = int(first_message.content.split("@")[1].split(">")[0])
+                user = guild.get_member(user_id)
 
             if user:
                 # Disable sending messages for the user who created the ticket, but keep the view permission
