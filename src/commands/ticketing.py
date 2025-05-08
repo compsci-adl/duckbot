@@ -55,7 +55,7 @@ class TicketForm(Modal, title="Create a Ticket"):
             )
             for field in self.children:
                 embed.add_field(
-                    name=field.label, value=field.value or "Not Provided", inline=False
+                    name=field.label, value=field.value or "N/A", inline=False
                 )
             await anon_channel.send(embed=embed)
             await interaction.response.send_message(
