@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 
 import discord
@@ -8,6 +9,7 @@ from discord.ui import Button, Modal, TextInput, View
 COMMITTEE_ROLE_NAME = "Committee"
 ANON_TICKET_CHANNEL_NAME = "anonymous-tickets"
 TICKET_CATEGORY_NAME = "Tickets"
+ARCHIVE_CATEGORY_NAME = "Archived Tickets"
 
 
 class TicketForm(Modal, title="Create a Ticket"):
@@ -65,12 +67,12 @@ class TicketForm(Modal, title="Create a Ticket"):
                 name=f"ticket-{interaction.user.name}".lower(),
                 category=category,
                 overwrites=overwrites,
-                topic=f"Ticket created by {interaction.user.display_name}",
+                topic=f"Ticket created by {interaction.user.display_name} ({interaction.user.id})",
             )
 
             embed = discord.Embed(
                 title="New Ticket",
-                color=discord.Color.green(),
+                color=discord.Color.yellow(),
                 timestamp=datetime.now(timezone.utc),
             )
             for field in self.children:
@@ -78,9 +80,96 @@ class TicketForm(Modal, title="Create a Ticket"):
                     name=field.label, value=field.value or "Not Provided", inline=False
                 )
             await ticket_channel.send(embed=embed)
+
+            # After sending initial embed in ticket channel
+            await ticket_channel.send(
+                embed=discord.Embed(
+                    title="✅ Ticket Created",
+                    description="Thank you for submitting your ticket. A committee member will respond when available. To close this ticket, please click the button below.",
+                    color=discord.Color.green(),
+                    timestamp=datetime.now(timezone.utc),
+                ),
+                view=CloseTicketView(channel=ticket_channel),
+            )
+
             await interaction.response.send_message(
                 f"Ticket created: {ticket_channel.mention}", ephemeral=True
             )
+
+
+class CloseReasonModal(Modal, title="Close Ticket"):
+    def __init__(self, view: "CloseTicketView"):
+        super().__init__(timeout=None)
+        self.view = view
+        self.reason = TextInput(
+            label="Reason for closing the ticket",
+            style=TextStyle.paragraph,
+            required=True,
+        )
+        self.add_item(self.reason)
+
+    async def on_submit(self, interaction: Interaction):
+        # Add a small delay to allow the modal to close
+        await asyncio.sleep(1)
+
+        # Move the channel to Archived Tickets
+        guild = interaction.guild
+        archive_category = discord.utils.get(
+            guild.categories, name=ARCHIVE_CATEGORY_NAME
+        )
+        if archive_category:
+            # Send the close reason and embed
+            embed = discord.Embed(
+                title="🔒 Ticket Closed",
+                color=discord.Color.red(),
+                timestamp=datetime.now(timezone.utc),
+            )
+            embed.add_field(
+                name="Closed by", value=interaction.user.mention, inline=False
+            )
+            embed.add_field(name="Reason", value=self.reason.value, inline=False)
+
+            await self.view.channel.send(embed=embed)
+
+            # Move the channel to the archived category
+            await self.view.channel.edit(category=archive_category)
+
+            # Extract the user ID from the topic
+            ticket_creator_id = self.view.channel.topic.split("Ticket created by ")[
+                1
+            ].split(" ")[-1][1:-1]
+            user = guild.get_member(int(ticket_creator_id))
+
+            if user:
+                # Disable sending messages for the user who created the ticket, but keep the view permission
+                await self.view.channel.set_permissions(
+                    user, view_channel=True, send_messages=False
+                )
+
+            # Send a confirmation response back to the user
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="✅ Ticket Archived",
+                    description="This ticket has been successfully closed and moved to Archived Tickets. You can no longer send messages in this ticket.",
+                    color=discord.Color.green(),
+                    timestamp=datetime.now(timezone.utc),
+                ),
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                "❌ Archive category not found.", ephemeral=True
+            )
+
+
+class CloseTicketView(View):
+    def __init__(self, channel: discord.TextChannel):
+        super().__init__(timeout=None)
+        self.channel = channel
+
+    @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.red)
+    async def close_ticket(self, interaction: Interaction, button: Button):
+        await interaction.response.send_modal(CloseReasonModal(view=self))
 
 
 class TicketPanel(View):
