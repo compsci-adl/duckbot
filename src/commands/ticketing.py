@@ -76,6 +76,9 @@ class TicketForm(Modal, title="Create a Ticket"):
                 topic=f"Ticket created by {interaction.user.display_name} ({interaction.user.id})",
             )
 
+            # Send a welcome message tagging the user
+            await ticket_channel.send(content=f"Welcome {interaction.user.mention}!")
+
             embed = discord.Embed(
                 title="New Ticket",
                 color=discord.Color.yellow(),
