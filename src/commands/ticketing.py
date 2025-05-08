@@ -17,6 +17,12 @@ class TicketForm(Modal, title="Create a Ticket"):
         super().__init__(timeout=None)
         self.anonymous = anonymous
 
+        # Set the description based on whether the ticket is anonymous or not
+        if self.anonymous:
+            self.description = "This ticket will be posted anonymously for committee members to review."
+        else:
+            self.description = "You will be added to a private channel to discuss your issue further with committee members."
+
         # Only add these fields if it's a non-anonymous ticket
         if not self.anonymous:
             self.add_item(TextInput(label="Name (optional)", required=False))
@@ -27,6 +33,7 @@ class TicketForm(Modal, title="Create a Ticket"):
         self.add_item(
             TextInput(
                 label="Details of your issue",
+                placeholder=self.description,
                 style=TextStyle.paragraph,
                 required=True,
             )
