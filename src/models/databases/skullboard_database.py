@@ -23,8 +23,8 @@ class SkullboardDB(Database):
         # Initialise ONCE
         if not hasattr(self, "initialised"):
             load_dotenv()  # Load environment variables from .env file
-            self.threshold = int(os.environ.get("REQUIRED_REACTIONS", 0))
-            self.guild_id = int(os.environ.get("GUILD_ID", -1))
+            self.threshold = int(os.environ.get("REQUIRED_REACTIONS", "0"))
+            self.guild_id = int(os.environ.get("GUILD_ID", "-1"))
             super().__init__(SkullSQL.initialisation_tables, "skull.sqlite")
             self.initialised = True
 
