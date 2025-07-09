@@ -9,11 +9,13 @@ from discord.ext import commands
 from discord.ui import Button, Modal, TextInput, View
 from dotenv import load_dotenv
 
-COMMITTEE_ROLE_NAME = "Committee"
-ANON_TICKET_CHANNEL_NAME = "anonymous-tickets"
-TICKET_CATEGORY_NAME = "Tickets"
-ARCHIVE_CATEGORY_NAME = "Archived Tickets"
-LOG_CHANNEL_NAME = "bot-log-ticketing"
+load_dotenv()
+
+COMMITTEE_ROLE_NAME = os.getenv("COMMITTEE_ROLE_NAME")
+ANON_TICKET_CHANNEL_NAME = os.getenv("ANON_TICKET_CHANNEL_NAME")
+TICKET_CATEGORY_NAME = os.getenv("TICKET_CATEGORY_NAME")
+ARCHIVE_CATEGORY_NAME = os.getenv("ARCHIVE_CATEGORY_NAME")
+LOG_CHANNEL_NAME = os.getenv("LOG_CHANNEL_NAME")
 
 
 load_dotenv()
