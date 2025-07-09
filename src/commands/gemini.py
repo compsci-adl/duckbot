@@ -205,7 +205,7 @@ class GeminiBot:
                 response_embed = Embed(title="Ask DuckBot", color=LIGHT_YELLOW)
             else:
                 response_embed = Embed(
-                    title=f"Continued Answer {i}/{len(split_message)-1}",
+                    title=f"Continued Answer {i}/{len(split_message) - 1}",
                     color=LIGHT_YELLOW,
                 )
 
