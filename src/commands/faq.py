@@ -61,10 +61,10 @@ class FNGGroup(app_commands.Group):
         tz = pytz.timezone("Australia/Adelaide")
         # Manually inputting dates
         date_stack = [
-            tz.localize(dt.datetime(2025, 10, 31, 17)),
+            tz.localize(dt.datetime(2025, 10, 24, 17)),
+            tz.localize(dt.datetime(2025, 10, 10, 17)),
             tz.localize(dt.datetime(2025, 9, 19, 17)),
-            tz.localize(dt.datetime(2025, 8, 29, 17)),
-            tz.localize(dt.datetime(2025, 8, 15, 17)),
+            tz.localize(dt.datetime(2025, 8, 22, 17)),
             tz.localize(dt.datetime(2025, 5, 30, 17)),
             tz.localize(dt.datetime(2025, 3, 28, 17)),
         ]
