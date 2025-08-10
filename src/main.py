@@ -64,7 +64,7 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            model_name="models/gemini-1.5-flash",
+            model_name="models/gemini-2.5-flash",
             data_csv_path="src/data/duckbot_train_data.csv",
             bot=self,
             api_key=GEMINI_API_KEY,
