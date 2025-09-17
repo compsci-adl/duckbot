@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from commands import admin_commands, gemini, help_menu, skullboard
 from constants.colours import LIGHT_YELLOW
 from utils import spam_detection, time
+from utils.event_roles import EventRoleManager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -44,12 +45,25 @@ intents.members = True
 
 
 class DuckBot(commands.Bot):
+    async def on_scheduled_event_user_add(self, event, user):
+        """Delegate to EventRoleManager."""
+        await self.event_role_manager.on_scheduled_event_user_add(event, user)
+
+    async def on_scheduled_event_user_remove(self, event, user):
+        """Delegate to EventRoleManager."""
+        await self.event_role_manager.on_scheduled_event_user_remove(event, user)
+
+    async def on_scheduled_event_update(self, before, after):
+        """Delegate to EventRoleManager."""
+        await self.event_role_manager.on_scheduled_event_update(before, after)
+
     def __init__(self):
         super().__init__(command_prefix="", intents=intents)
         self.synced = False  # Make sure that the command tree will be synced only once
         self.skullboard_manager = skullboard.SkullboardManager(
             self
         )  # Initialise SkullboardManager
+        self.event_role_manager = EventRoleManager(self)  # Initialise EventRoleManager
         self.prev_day = None
         self.expiry_loop = None
 
