@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 CMS_URL = os.getenv("CMS_URL")
-KNOWN_SPAM_MESSAGES_URL = f"{CMS_URL}/api/known-spam-messages"
+KNOWN_SPAM_MESSAGES_URL = f"{CMS_URL}/api/known-spam-messages?limit=500"
 
 
 async def fetch_spam_messages():
