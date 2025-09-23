@@ -218,8 +218,10 @@ async def on_message(message: Message):
         await spam_detection.check_spam(message)
 
     if (
-        client.user.mentioned_in(message) or "d.chat" in message.clean_content
-    ) and message.author != client.user:
+        (client.user.mentioned_in(message) or "d.chat" in message.clean_content)
+        and message.author != client.user
+        and not message.mention_everyone
+    ):
         attachment = message.attachments[0] if message.attachments else None
 
         bot_response = await client.gemini_model.query(
