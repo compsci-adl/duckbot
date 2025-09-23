@@ -81,6 +81,7 @@ jobs:
           LIMIT_WINDOW: ${{ secrets.LIMIT_WINDOW }}
           LOG_CHANNEL_ID: ${{ secrets.LOG_CHANNEL_ID }}
           ADMIN_USERS: ${{ secrets.ADMIN_USERS }}
+          CMS_URL: ${{ secrets.CMS_URL }}
         run: |
           echo "$KEY" > private_key && chmod 600 private_key
           ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOSTNAME} '
@@ -97,6 +98,7 @@ jobs:
             echo LIMIT_WINDOW=${{ secrets.LIMIT_WINDOW }} >> .env
             echo LOG_CHANNEL_ID=${{ secrets.LOG_CHANNEL_ID }} >> .env
             echo ADMIN_USERS=${{ secrets.ADMIN_USERS }} >> .env
+            echo CMS_URL=${{ secrets.CMS_URL }} >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '
