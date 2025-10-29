@@ -99,6 +99,11 @@ jobs:
             echo LOG_CHANNEL_ID=${{ secrets.LOG_CHANNEL_ID }} >> .env
             echo ADMIN_USERS=${{ secrets.ADMIN_USERS }} >> .env
             echo CMS_URL=${{ secrets.CMS_URL }} >> .env
+            echo COMMITTEE_ROLE_NAME="Committee" >> .env
+            echo ANON_TICKET_CHANNEL_NAME="anonymous-tickets" >> .env
+            echo TICKET_CATEGORY_NAME="Tickets" >> .env
+            echo ARCHIVE_CATEGORY_NAME="Archived Tickets" >> .env
+            echo LOG_CHANNEL_NAME="bot-log-ticketing" >> .env
             docker load -i duckbot.tar.gz
             docker compose up -d
           '
