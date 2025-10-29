@@ -18,7 +18,7 @@ from discord.errors import NotFound
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from commands import admin_commands, gemini, help_menu, skullboard
+from commands import admin_commands, gemini, help_menu, skullboard, ticketing
 from constants.colours import LIGHT_YELLOW
 from utils import spam_detection, time
 from utils.event_roles import EventRoleManager
@@ -99,6 +99,7 @@ class DuckBot(commands.Bot):
             await self.tree.sync(guild=Object(GUILD_ID))
             self.synced = True
         self.loop.create_task(self.run_expiry_loop())
+        self.add_view(ticketing.TicketPanel())
 
     async def on_ready(self):
         print(f"Say hi to {self.user}!")
