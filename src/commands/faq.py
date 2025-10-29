@@ -47,8 +47,8 @@ class FNGGroup(app_commands.Group):
     )
     async def about(self, interaction: Interaction):
         fng_info = (
-            "Friday Night Games (FNG) is a regular Computer Science Club event where the Duck Lounge (Located in EM110) hosts a weekly games night from 5PM where members commonly play amongst a Nintendo Switch and board games.\n"
-            "Moreover, on the final Friday of each month within semester, we have free food for all members! Type ``/faq fng food`` to find out when the next FNG with food will be.\n\n"
+            "Friday Night Games (FNG) is a regular Computer Science Club event where the Duck Lounge (Located in EM110) hosts a weekly games night from 5PM where members commonly play amongst a Nintendo Switch 2 and board games.\n"
+            "Moreover, on certain Fridays within the semester, we have free food for all members! Type ``/faq fng food`` to find out when the next FNG with food will be.\n\n"
             "Join us for games and fun!\n"
         )
         await interaction.response.send_message(fng_info)
@@ -61,10 +61,10 @@ class FNGGroup(app_commands.Group):
         tz = pytz.timezone("Australia/Adelaide")
         # Manually inputting dates
         date_stack = [
-            tz.localize(dt.datetime(2025, 10, 31, 17)),
+            tz.localize(dt.datetime(2025, 10, 24, 17)),
+            tz.localize(dt.datetime(2025, 10, 10, 17)),
             tz.localize(dt.datetime(2025, 9, 19, 17)),
-            tz.localize(dt.datetime(2025, 8, 29, 17)),
-            tz.localize(dt.datetime(2025, 8, 15, 17)),
+            tz.localize(dt.datetime(2025, 8, 22, 17)),
             tz.localize(dt.datetime(2025, 5, 30, 17)),
             tz.localize(dt.datetime(2025, 3, 28, 17)),
         ]

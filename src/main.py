@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from commands import admin_commands, gemini, help_menu, skullboard, ticketing
 from constants.colours import LIGHT_YELLOW
 from utils import spam_detection, time
+from utils.event_roles import EventRoleManager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -44,12 +45,25 @@ intents.members = True
 
 
 class DuckBot(commands.Bot):
+    async def on_scheduled_event_user_add(self, event, user):
+        """Delegate to EventRoleManager."""
+        await self.event_role_manager.on_scheduled_event_user_add(event, user)
+
+    async def on_scheduled_event_user_remove(self, event, user):
+        """Delegate to EventRoleManager."""
+        await self.event_role_manager.on_scheduled_event_user_remove(event, user)
+
+    async def on_scheduled_event_update(self, before, after):
+        """Delegate to EventRoleManager."""
+        await self.event_role_manager.on_scheduled_event_update(before, after)
+
     def __init__(self):
         super().__init__(command_prefix="", intents=intents)
         self.synced = False  # Make sure that the command tree will be synced only once
         self.skullboard_manager = skullboard.SkullboardManager(
             self
         )  # Initialise SkullboardManager
+        self.event_role_manager = EventRoleManager(self)  # Initialise EventRoleManager
         self.prev_day = None
         self.expiry_loop = None
 
@@ -64,7 +78,7 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            model_name="models/gemini-1.5-flash",
+            model_name="models/gemini-2.5-flash",
             data_csv_path="src/data/duckbot_train_data.csv",
             bot=self,
             api_key=GEMINI_API_KEY,
@@ -205,8 +219,10 @@ async def on_message(message: Message):
         await spam_detection.check_spam(message)
 
     if (
-        client.user.mentioned_in(message) or "d.chat" in message.clean_content
-    ) and message.author != client.user:
+        (client.user.mentioned_in(message) or "d.chat" in message.clean_content)
+        and message.author != client.user
+        and not message.mention_everyone
+    ):
         attachment = message.attachments[0] if message.attachments else None
 
         bot_response = await client.gemini_model.query(

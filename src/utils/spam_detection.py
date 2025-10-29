@@ -1,6 +1,7 @@
 import datetime
 import os
 
+import aiohttp
 import discord
 import Levenshtein
 from dotenv import load_dotenv
@@ -8,26 +9,48 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+CMS_URL = os.getenv("CMS_URL")
+KNOWN_SPAM_MESSAGES_URL = f"{CMS_URL}/api/known-spam-messages?limit=500"
 
-# List of known spam messages
-spam_messages = [
-    "Hi! Everyone, please I’m trying to sell my Zach Bryan tickets because I can’t attend the show anymore due to change of plans. Anyone interested should text me on WhatsApp +1 (214) 632‑6846",
-    "I want to give out my MacBook Air 2020 & Charger** for free, it's in perfect health and good as new, alongside a charger so it's perfect, I want to give it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve ! PM IF YOU ARE INTERESTED OR YOU CAN DM ME FOR MORE INFO",
-    "Top University Ghost Tutor Contact Email: ivy.researcher1@gmail.com Instagram: Ivyreseacher1 Telegram:t.me/Ivyresearchers WhatsApp :+44 7878519184 :+12067366194 Courses Engineering (Aerospace, Material, Mechanical, Industrial) Business (Analytics, Statistics, Accounting) Economics (Microeconomics) Management (Supply Chain, MBA) IT & Project Management PolicyTech & Various Engineering Fields Science, Math, Psychology, Philosophy Medical courses Academic Support 24/7 Services include: ✏️ Quizzes & Assignments 🖊️ Reports & Thesis 📝 Essay Writing & More 💻 Online Sessions WhatsApp group: https://chat.whatsapp.com/H5TnqaEp2uy8bHms4ibkDr Message John on WhatsApp. https://wa.me/message/F3QWRUV4EGWVK1 Group 2 https://chat.whatsapp.com/JEJ5TCd7UPSH2LtYMHkrZt",
-    "Hey everyone! I’m looking to pass my Sabrina carpenter tickets for footprint center in Phoenix, AZ. Wed,Nov 13. HMU if you’re interested +1 480-719-4319",
-    "Hi! Everyone, please I’m trying to sell my Sabrina Carpenter tickets because I can’t attend the show anymore due to change of plans. Anyone interested should DM",
-    "I want to give out my MacBook 2020 & Charger** for free, it's in perfect health and good as new, alongside a charger so it's perfect, I want to give it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve ! DM IF YOU ARE INTERESTED or on my iMessage…..jaynicky626@gmail.com",
-    "Hi! Everyone, please I’m trying to sell my Billie Eilish tickets because I can’t attend the show anymore due to change of plans. Anyone interested should Text me on (360)-572-6816",
-    "Hello, I'm Tutor Dublin Assignment/Exam help 🎯 Friendly prices 🎯All hours revision policy 🎯 Good grades guaranteed 🎯 Qualified tutors Assignment/Exam helper👇 📚 Architecture,mechanics,Physics 📚Law, Biology, Engineering courses 📚All math(calc,stats, Algebra...) 📚Html,Css, Design,Angular,Realitics, JavaScript, Python,Canvas 📚 Computer science, Business, Accounting,Finance,Economics ✅ Online classes ✅ Exams&quizzes ✅ Dissertation,thesis&Resumes,C++ ✅ Proofreading&Editing, Proposals ✅ Midterms ✅All courses Why Us? ➡️ Plagiarism free writing ➡️ Timely Delivery ➡️Unlimited Revisions ➡️Refund ✅Email: DublinAssignmentHelp@gmail.com ✅https://wa.link/yegwpz ✅ TELEGRAM:https://t.me/Studentshelper16",
-    "Hi everyone! I don’t know if this would be allowed here but I’m looking to sell my Zach Bryan Tickets. I got them for me and my family but we’ve got an important place to be on that exact date. Anyone interested should Text me on 380 888 6213 or DM",
-    "Hi! Does anyone have an idea if I can request a refund or cancel my tickets to Billie Eilish concert on the Dec 13 at the Desert Diamond Arena, Glendale, AZ. I just can't attend anymore. Or if anyone would probably like to buy them off me, I'm willing to make a good deal. Thanks Hmu on 2096804186",
-    "Hey everyone! I’m looking to pass my Rod Wave tickets for Vystar Veterans Memorial Arena in Jacksonville, FL. Mon, Dec 16 at 7:30pm. HMU if you’re interested +1 480-719-4319",
-    "Hi everyone! I'm looking to sell my tickets to BILLIE EILISH on Sun, Dec 15, 7:00pm at Kia forum California HMU if you're interested🫶🏻",
-    "For anyone who’s enrolled or planning on enrolling I am willing to pass this Apple MacBook Air 9,1 With upmost pleasure, I'm giving out my MacBook Air & Charger for free to a lucky person. It is in perfect health and good as new, alongside a perfectly working charger 💯. I'm giving it out because I just got a new model and I thought of giving out the old one to someone who can't afford one and is in need of it... Strictly First come first serve, no partial, I am a recent alum who would love to help someone save some money even if just a little, I have used this MacBook Air for the entirety of the semester before I graduated PM IF YOU ARE INTERESTED Email me via deppvef@gmail.com",
-    "Hello @everyone! Is there anyone who would be interested in buying my tickets Kendrick Lamar and SZA The Dome at America's Center in St. Louis, MO Wed, Jun 4 at 7:00pm hmu if you’re interested +14157428800",
-    "@everyone I'm giving away my old MacBook 2015 pro, which is in excellent condition and comes with a charger, to someone in need since I've recently upgraded to a new model. It's available on a first-come, first-served basis DM IF YOU ARE INTERESTED",
-    "Hello everyone, Please join our Discord server. This is a community of expert tutors with vast experience in all subjects ready to help you with your homework, online exams, write research papers, complete online classes and other assignments.",
-]
+
+async def fetch_spam_messages():
+    """
+    Fetches known spam messages from the CMS and caches them.
+
+    Returns:
+        list: A list of known spam messages (strings).
+    """
+    # Check for cached spam messages and their age
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if hasattr(fetch_spam_messages, "_cached_spam_messages") and hasattr(
+        fetch_spam_messages, "_cache_time"
+    ):
+        cached = fetch_spam_messages._cached_spam_messages
+        cache_time = fetch_spam_messages._cache_time
+        if cached is not None and cache_time is not None:
+            # If cache is less than 1 day old, use it
+            if (now - cache_time).total_seconds() < 86400:
+                return cached
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(KNOWN_SPAM_MESSAGES_URL) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+
+                    # Parse CMS response
+                    messages = [
+                        doc["message"] for doc in data["docs"] if "message" in doc
+                    ]
+                    fetch_spam_messages._cached_spam_messages = messages
+                    fetch_spam_messages._cache_time = now
+                    return messages
+    except Exception as e:
+        print(f"Failed to fetch spam messages from CMS: {e}")
+
+    # Fallback to empty list if fetch fails
+    fetch_spam_messages._cached_spam_messages = []
+    fetch_spam_messages._cache_time = now
+    return []
 
 
 def is_spam(input_message, spam_messages, threshold=0.3):
@@ -65,6 +88,7 @@ async def check_spam(message):
     - message (discord.Message): The message object to evaluate.
     """
     input_message = message.content
+    spam_messages = await fetch_spam_messages()
     is_spam_flag = is_spam(input_message, spam_messages)
 
     # If the message is spam, take action
