@@ -156,6 +156,9 @@ class CloseReasonModal(Modal, title="Close Ticket"):
         # Add a small delay to allow the modal to close
         await asyncio.sleep(1)
 
+        # Defer the interaction to avoid 404 error
+        await interaction.response.defer(ephemeral=True)
+
         # Move the channel to Archived Tickets
         guild = interaction.guild
         archive_category = discord.utils.get(
@@ -189,6 +192,8 @@ class CloseReasonModal(Modal, title="Close Ticket"):
             if first_message:
                 user_id = int(first_message.content.split("@")[1].split(">")[0])
                 user = guild.get_member(user_id)
+            else:
+                user = None
 
             if user:
                 # Disable sending messages for the user who created the ticket, but keep the view permission
@@ -196,8 +201,8 @@ class CloseReasonModal(Modal, title="Close Ticket"):
                     user, view_channel=True, send_messages=False
                 )
 
-            # Send a confirmation response back to the user
-            await interaction.response.send_message(
+            # Send a confirmation response back to the user using followup
+            await interaction.followup.send(
                 embed=discord.Embed(
                     title="✅ Ticket Archived",
                     description="This ticket has been successfully closed and moved to Archived Tickets. You can no longer send messages in this ticket.",
@@ -217,7 +222,7 @@ class CloseReasonModal(Modal, title="Close Ticket"):
                     ).add_field(name="Reason", value=self.reason.value, inline=False)
                 )
         else:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Archive category not found.", ephemeral=True
             )
 
