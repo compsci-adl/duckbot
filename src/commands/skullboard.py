@@ -1,12 +1,11 @@
 import logging
 import os
-import re
 from collections import Counter
 from functools import wraps
 from io import BytesIO
 from typing import Awaitable, Callable
 
-import requests
+import aiohttp
 from discord import (
     AllowedMentions,
     Client,
@@ -18,11 +17,15 @@ from discord import (
 )
 from discord.errors import NotFound
 from discord.utils import MISSING
+from dotenv import load_dotenv
 
 from constants.colours import LIGHT_GREY
 from models.databases.skullboard_database import SkullboardDB
 from utils import time
 from utils.plotting import get_histogram_image
+
+load_dotenv()
+TENOR_API_KEY = os.getenv("TENOR_API_KEY")
 
 
 class SkullboardManager:
@@ -101,18 +104,40 @@ class SkullboardManager:
             await skullboard_message.delete()
 
     @staticmethod
+    def _simplify(url: str) -> str:
+        """Simplify URL by removing protocol"""
+        return url.replace("http://", "").replace("https://", "")
+
+    @staticmethod
+    def get_gif_id(url: str) -> str:
+        """Extract Tenor GIF ID from URL"""
+        base_url = "tenor.com/view/"
+        url = SkullboardManager._simplify(url.casefold())
+        if not url.startswith(base_url):
+            return None
+        gif_name = url.replace(base_url, "")
+        gif_id = gif_name.split("-")[-1]
+        return gif_id
+
+    @staticmethod
     async def get_gif_url(view_url):
         """Get URL of GIF from a Tenor view URL"""
-        # Get the page content
-        page_content = requests.get(view_url).text
-
-        # Regex to find the URL on the media.tenor.com domain that ends with .gif
-        regex = r"(?i)\b((https?://media1[.]tenor[.]com/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))[.]gif)"
-
-        # Find and return the first match
-        match = re.findall(regex, page_content)
-
-        return match[0][0] if match else None
+        gifid = SkullboardManager.get_gif_id(view_url)
+        if not gifid:
+            logging.warning(f"Invalid Tenor URL: {view_url}")
+            return None
+        async with aiohttp.ClientSession() as session:
+            url = (
+                f"https://tenor.googleapis.com/v2/posts?ids={gifid}&key={TENOR_API_KEY}"
+            )
+            async with session.get(url) as r:
+                if r.status == 200:
+                    data = await r.json()
+                    gif_url = data["results"][0]["media_formats"]["gif"]["url"]
+                    return gif_url
+                else:
+                    logging.error(f"Tenor API error for ID {gifid}: status {r.status}")
+                    return None
 
     async def edit_or_send_skullboard_message(
         self,
@@ -153,6 +178,21 @@ class SkullboardManager:
 
             if gif_url:
                 embed.set_image(url=gif_url)
+            else:
+                logging.warning(
+                    f"Failed to retrieve GIF URL for Tenor link: {message.content}"
+                )
+
+        elif message.content.strip().startswith(
+            "http"
+        ) and message.content.strip().endswith(".gif"):
+            # Constructing the embed for direct GIF URLs
+            embed = Embed(
+                timestamp=message.created_at,
+                colour=LIGHT_GREY,
+            )
+
+            embed.set_image(url=message.content.strip())
 
         # Set user nickname and thumbnail
         embed.set_author(name=user_nickname, icon_url=user_avatar_url)
