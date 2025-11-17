@@ -4,18 +4,30 @@ class AdminSettingsSQL:
     initialisation_tables = [
         """
         CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
+            key TEXT NOT NULL,
+            guild_id TEXT,
+            value TEXT NOT NULL,
+            PRIMARY KEY (key, guild_id)
         );
         """
     ]
 
     get_setting = """
-    SELECT value FROM settings WHERE key = ?;
+    SELECT value FROM settings WHERE key = ? AND guild_id IS NULL;
     """
 
     set_setting = """
-    INSERT INTO settings (key, value)
-    VALUES (?, ?)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+    INSERT INTO settings (key, guild_id, value)
+    VALUES (?, NULL, ?)
+    ON CONFLICT(key, guild_id) DO UPDATE SET value = excluded.value;
+    """
+
+    get_guild_setting = """
+    SELECT value FROM settings WHERE key = ? AND guild_id = ?;
+    """
+
+    set_guild_setting = """
+    INSERT INTO settings (key, guild_id, value)
+    VALUES (?, ?, ?)
+    ON CONFLICT(key, guild_id) DO UPDATE SET value = excluded.value;
     """

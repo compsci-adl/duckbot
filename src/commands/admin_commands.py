@@ -1,5 +1,4 @@
 import logging
-import os
 
 from discord import Color, Embed, Interaction, app_commands
 from dotenv import load_dotenv
@@ -7,9 +6,6 @@ from dotenv import load_dotenv
 from models.databases.admin_settings_db import AdminSettingsDB
 
 load_dotenv()
-
-# Retrieve the list of admin usernames from the .env file
-ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")
 
 
 class AdminCommands(app_commands.Group):
@@ -32,16 +28,19 @@ class AdminCommands(app_commands.Group):
 
         user_name = interaction.user.name
         logging.info(f"Checking admin status for user: {user_name}")
+        # Consider users with roles 'Exec Committee' or 'Mods' as admins
+        member = interaction.user
+        if interaction.guild and hasattr(member, "roles"):
+            role_names = {r.name for r in member.roles}
+            if "Exec Committee" in role_names or "Mods" in role_names:
+                logging.info(f"User {user_name} is authorised by role.")
+                return True
 
-        if user_name in ADMIN_USERS:
-            logging.info(f"User {user_name} is authorised.")
-            return True
-        else:
-            await interaction.response.send_message(
-                "You don't have permission to execute that command.", ephemeral=True
-            )
-            logging.warning(f"User {user_name} is not authorised.")
-            return False
+        await interaction.response.send_message(
+            "You don't have permission to execute that command.", ephemeral=True
+        )
+        logging.warning(f"User {user_name} is not authorised.")
+        return False
 
     @app_commands.command(
         name="help", description="Display name and description of admin commands"
@@ -79,25 +78,58 @@ class AdminCommands(app_commands.Group):
         """Command to log and display all relevant environment variables."""
         if not await self.check_admin(interaction):
             return
+        # Show per-guild settings if possible
+        guild_id = interaction.guild.id if interaction.guild else None
+        if guild_id:
+            channel_id, required = self.settings_db.get_server_settings(str(guild_id))
+            channel_id = channel_id or "Not Set"
+            required = required if required is not None else "Not Set"
+        else:
+            channel_id = (
+                self.settings_db.get_setting("SKULLBOARD_CHANNEL_ID") or "Not Set"
+            )
+            required = self.settings_db.get_setting("REQUIRED_REACTIONS") or "Not Set"
 
-        # Get values from database instead of env
-        guild_id = self.settings_db.get_setting("GUILD_ID") or "Not Set"
-        skullboard_channel_id = (
-            self.settings_db.get_setting("SKULLBOARD_CHANNEL_ID") or "Not Set"
-        )
-        required_reactions = (
-            self.settings_db.get_setting("REQUIRED_REACTIONS") or "Not Set"
+        # Also include ticketing-related names
+        def _get_key(k):
+            return (
+                self.settings_db.get_setting(k, guild_id=str(guild_id))
+                if guild_id
+                else self.settings_db.get_setting(k)
+            )
+
+        committee_role = _get_key("COMMITTEE_ROLE_NAME") or "Not Set"
+        anon_ticket_channel = _get_key("ANON_TICKET_CHANNEL_NAME") or "Not Set"
+        ticket_category = _get_key("TICKET_CATEGORY_NAME") or "Not Set"
+        archive_category = _get_key("ARCHIVE_CATEGORY_NAME") or "Not Set"
+        log_channel = (
+            _get_key("LOG_CHANNEL_NAME")
+            or self.settings_db.get_setting("LOG_CHANNEL_ID")
+            or "Not Set"
         )
 
         embed = Embed(title="Current Settings", color=0x00FF00)
         embed.add_field(name="Guild ID", value=f"`{guild_id}`", inline=False)
         embed.add_field(
-            name="Skullboard Channel ID",
-            value=f"`{skullboard_channel_id}`",
+            name="Skullboard Channel ID", value=f"`{channel_id}`", inline=False
+        )
+        embed.add_field(name="Required Reactions", value=f"`{required}`", inline=False)
+        embed.add_field(
+            name="Log Channel / Name", value=f"`{log_channel}`", inline=False
+        )
+        embed.add_field(
+            name="Committee Role Name", value=f"`{committee_role}`", inline=False
+        )
+        embed.add_field(
+            name="Anonymous Ticket Channel Name",
+            value=f"`{anon_ticket_channel}`",
             inline=False,
         )
         embed.add_field(
-            name="Required Reactions", value=f"`{required_reactions}`", inline=False
+            name="Ticket Category Name", value=f"`{ticket_category}`", inline=False
+        )
+        embed.add_field(
+            name="Archive Category Name", value=f"`{archive_category}`", inline=False
         )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -111,15 +143,6 @@ class SetSubGroup(app_commands.Group):
         self.check_admin = check_admin
         self.settings_db = settings_db
 
-    @app_commands.command(name="guild-id", description="Set the guild ID for DuckBot.")
-    async def set_guild_id(self, interaction: Interaction, guild_id: str):
-        if not await self.check_admin(interaction):
-            return
-        self.settings_db.set_setting("GUILD_ID", guild_id)
-        await interaction.response.send_message(
-            f"Guild ID set to {guild_id}.", ephemeral=True
-        )
-
     @app_commands.command(
         name="skullboard-channel-id", description="Set the Skullboard channel ID."
     )
@@ -128,9 +151,18 @@ class SetSubGroup(app_commands.Group):
     ):
         if not await self.check_admin(interaction):
             return
-        self.settings_db.set_setting("SKULLBOARD_CHANNEL_ID", channel_id)
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        # Preserve existing required reactions for this guild
+        _, required = self.settings_db.get_server_settings(str(guild_id))
+        self.settings_db.set_server_settings(str(guild_id), channel_id, required)
         await interaction.response.send_message(
-            f"Skullboard channel ID set to {channel_id}.", ephemeral=True
+            f"Skullboard channel ID set to {channel_id} for this server.",
+            ephemeral=True,
         )
 
     @app_commands.command(
@@ -139,9 +171,127 @@ class SetSubGroup(app_commands.Group):
     async def set_required_reactions(self, interaction: Interaction, reactions: int):
         if not await self.check_admin(interaction):
             return
-        self.settings_db.set_setting("REQUIRED_REACTIONS", str(reactions))
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        # Preserve existing channel id for this guild
+        channel_id, _ = self.settings_db.get_server_settings(str(guild_id))
+        self.settings_db.set_server_settings(str(guild_id), channel_id, reactions)
         await interaction.response.send_message(
-            f"Required reactions set to {reactions}.", ephemeral=True
+            f"Required reactions set to {reactions} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="committee-role-name",
+        description="Set the committee role name used for ticketing.",
+    )
+    async def set_committee_role_name(self, interaction: Interaction, name: str):
+        if not await self.check_admin(interaction):
+            return
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        self.settings_db.set_setting(
+            "COMMITTEE_ROLE_NAME", name, guild_id=str(guild_id)
+        )
+        await interaction.response.send_message(
+            f"Committee role name set to {name} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="anon-ticket-channel-name",
+        description="Set the anonymous ticket channel name.",
+    )
+    async def set_anon_ticket_channel_name(self, interaction: Interaction, name: str):
+        if not await self.check_admin(interaction):
+            return
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        self.settings_db.set_setting(
+            "ANON_TICKET_CHANNEL_NAME", name, guild_id=str(guild_id)
+        )
+        await interaction.response.send_message(
+            f"Anon ticket channel name set to {name} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="ticket-category-name",
+        description="Set the ticket category name.",
+    )
+    async def set_ticket_category_name(self, interaction: Interaction, name: str):
+        if not await self.check_admin(interaction):
+            return
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        self.settings_db.set_setting(
+            "TICKET_CATEGORY_NAME", name, guild_id=str(guild_id)
+        )
+        await interaction.response.send_message(
+            f"Ticket category name set to {name} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="archive-category-name",
+        description="Set the archive category name.",
+    )
+    async def set_archive_category_name(self, interaction: Interaction, name: str):
+        if not await self.check_admin(interaction):
+            return
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        self.settings_db.set_setting(
+            "ARCHIVE_CATEGORY_NAME", name, guild_id=str(guild_id)
+        )
+        await interaction.response.send_message(
+            f"Archive category name set to {name} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="log-channel-name",
+        description="Set the log channel name used by ticketing.",
+    )
+    async def set_log_channel_name(self, interaction: Interaction, name: str):
+        if not await self.check_admin(interaction):
+            return
+        guild_id = interaction.guild.id if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message(
+                "Guild context required.", ephemeral=True
+            )
+            return
+        self.settings_db.set_setting("LOG_CHANNEL_NAME", name, guild_id=str(guild_id))
+        await interaction.response.send_message(
+            f"Log channel name set to {name} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="log-channel-id", description="Set the global log channel ID for DuckBot."
+    )
+    async def set_log_channel_id(self, interaction: Interaction, channel_id: str):
+        if not await self.check_admin(interaction):
+            return
+        # This is a global setting stored in the settings table
+        self.settings_db.set_setting("LOG_CHANNEL_ID", channel_id)
+        await interaction.response.send_message(
+            f"Log channel ID set to {channel_id}.", ephemeral=True
         )
 
 
