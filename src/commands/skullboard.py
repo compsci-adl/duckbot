@@ -29,6 +29,16 @@ load_dotenv()
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")
 
 
+def _get_guild_id(interaction: Interaction):
+    """Return the guild id from an interaction (or None)."""
+    return interaction.guild.id if interaction.guild else None
+
+
+def _format_post_link(guild_id, channel_id, post_id, user_id, frequency):
+    """Format a skullboard post link line for lists (keeps previous behaviour when guild_id is None)."""
+    return f"💀 {frequency} : https://discord.com/channels/{guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+
+
 class SkullboardManager:
     """Manages discord activities related to the skullboard"""
 
@@ -311,7 +321,7 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="about", description="Learn about the Skullboard")
     @interaction_handler
     async def about(self, interaction: Interaction) -> Response:
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = _get_guild_id(interaction)
         channel_id, required = self.admin_db.get_server_settings(str(guild_id))
         channel_mention = f"<#{channel_id}>" if channel_id else "(not configured)"
         skullboard_info = (
@@ -340,7 +350,7 @@ class SkullGroup(app_commands.Group):
     )
     @interaction_handler
     async def rank(self, interaction: Interaction):
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = _get_guild_id(interaction)
         rankings = await self.db.get_user_rankings(10, str(guild_id))
         if not rankings:
             raise Exception("Database Error")
@@ -365,7 +375,7 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="hof", description="Get top Skullboard posts (all-time)")
     @interaction_handler
     async def hof(self, interaction: Interaction) -> Response:
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = _get_guild_id(interaction)
         hof_entries = await self.db.get_HOF(10, str(guild_id))
         if not hof_entries:
             raise Exception("Database Error")
@@ -375,8 +385,7 @@ class SkullGroup(app_commands.Group):
         # The post date is unused, may use in future if needed.
         for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
             # Format the HoF entries into a readable message
-            guild_id = interaction.guild.id if interaction.guild else None
-            line = f"💀 {frequency} : https://discord.com/channels/{guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+            line = _format_post_link(guild_id, channel_id, post_id, user_id, frequency)
             msg.append(line)
 
         msg = "\n".join(msg)
@@ -391,7 +400,7 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="week", description="Get top posts (this week)")
     @interaction_handler
     async def week(self, interaction: Interaction) -> Response:
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = _get_guild_id(interaction)
         hof_entries = await self.db.get_7_day_post(5, str(guild_id))
         hof_entries = [
             (post_id, user_id, channel_id, day, frequency)
@@ -407,8 +416,7 @@ class SkullGroup(app_commands.Group):
         # The post date is unused, may use in future if needed.
         for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
             # Format the entries into a readable message
-            guild_id = interaction.guild.id if interaction.guild else None
-            line = f"💀 {frequency} : https://discord.com/channels/{guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+            line = _format_post_link(guild_id, channel_id, post_id, user_id, frequency)
             msg.append(line)
 
         msg = "\n".join(msg)
