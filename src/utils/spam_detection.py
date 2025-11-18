@@ -6,9 +6,10 @@ import discord
 import Levenshtein
 from dotenv import load_dotenv
 
+from models.databases.admin_settings_db import AdminSettingsDB
+
 # Load environment variables from .env file
 load_dotenv()
-LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 CMS_URL = os.getenv("CMS_URL")
 KNOWN_SPAM_MESSAGES_URL = f"{CMS_URL}/api/known-spam-messages?limit=500"
 
@@ -80,7 +81,7 @@ def is_spam(input_message, spam_messages, threshold=0.3):
     return False
 
 
-async def check_spam(message):
+async def check_spam(message, settings_db=None):
     """
     Checks potential spam messages by deleting them and timing out the user.
 
@@ -122,9 +123,21 @@ async def check_spam(message):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-        # Log the spam message
+        # Log the spam message using the configured global `LOG_CHANNEL_ID` stored in DB
         try:
-            log_channel = message.guild.get_channel(LOG_CHANNEL_ID)
+            # Accept a settings_db instance to avoid repeated DB instantiation.
+            db = settings_db if settings_db is not None else AdminSettingsDB()
+            log_channel_id = db.get_setting("LOG_CHANNEL_ID")
+            if not log_channel_id:
+                # Nothing configured, skip logging
+                return
+            try:
+                log_channel_obj = message.guild.get_channel(int(log_channel_id))
+            except Exception:
+                log_channel_obj = None
+
+            if log_channel_obj is None:
+                return
 
             # Create an embed to log the spam message
             embed = discord.Embed(
@@ -145,6 +158,6 @@ async def check_spam(message):
             embed.set_footer(text=f"User ID: {member.id} | Message ID: {message.id}")
 
             # Send the embed to the log channel
-            await log_channel.send(embed=embed)
+            await log_channel_obj.send(embed=embed)
         except Exception as e:
             print(f"An error occurred while logging the spam message: {e}")

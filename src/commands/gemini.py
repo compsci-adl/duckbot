@@ -60,7 +60,6 @@ ERROR_MESSAGES = {
 
 class GeminiBot:
     REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
-    LIMIT_WINDOW = int(os.environ["LIMIT_WINDOW"])
 
     def __init__(self, model_name, data_csv_path, bot, api_key):
         genai.configure(api_key=api_key)
@@ -122,9 +121,7 @@ class GeminiBot:
 
         # Filter out requests that happened more than a minute ago
         request_times = [
-            timestamp
-            for timestamp in request_times
-            if current_time - timestamp < self.LIMIT_WINDOW
+            timestamp for timestamp in request_times if current_time - timestamp < 60
         ]
 
         # Update the user's request history with only the recent ones

@@ -1,17 +1,12 @@
-import os
-
 from discord import (
     ButtonStyle,
     Color,
     Embed,
     Interaction,
-    Object,
     SelectOption,
     app_commands,
     ui,
 )
-
-GUILD_ID = int(os.environ["GUILD_ID"])
 
 
 class HelpMenu(ui.View):
@@ -22,9 +17,8 @@ class HelpMenu(ui.View):
     def __init__(self, client):
         super().__init__()
         self.value = None
-        self.commands = list(
-            client.tree.get_commands(guild=Object(GUILD_ID))
-        )  # Gets commands on class creation
+        # Fetch global commands
+        self.commands = list(client.tree.get_commands())
 
         # Separate group commands and misc commands
         self.group_commands = []

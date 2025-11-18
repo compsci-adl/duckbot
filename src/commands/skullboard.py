@@ -20,12 +20,23 @@ from discord.utils import MISSING
 from dotenv import load_dotenv
 
 from constants.colours import LIGHT_GREY
+from models.databases.admin_settings_db import AdminSettingsDB
 from models.databases.skullboard_database import SkullboardDB
 from utils import time
 from utils.plotting import get_histogram_image
 
 load_dotenv()
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")
+
+
+def _get_guild_id(interaction: Interaction):
+    """Return the guild id from an interaction (or None)."""
+    return interaction.guild.id if interaction.guild else None
+
+
+def _format_post_link(guild_id, channel_id, post_id, user_id, frequency):
+    """Format a skullboard post link line for lists (keeps previous behaviour when guild_id is None)."""
+    return f"💀 {frequency} : https://discord.com/channels/{guild_id}/{channel_id}/{post_id} from <@{user_id}>"
 
 
 class SkullboardManager:
@@ -35,6 +46,7 @@ class SkullboardManager:
         """Initialise SkullboardManager"""
         self.client = client
         self.db = SkullboardDB()
+        self.admin_db = AdminSettingsDB()
 
     async def get_reaction_count(self, message, emoji):
         """Get count of a specific emoji reaction on a message"""
@@ -47,9 +59,15 @@ class SkullboardManager:
             0,
         )
 
-    async def handle_skullboard(self, message, skullboard_channel_id):
-        """Handle reactions and update/delete skullboard messages"""
-        skullboard_channel = self.client.get_channel(skullboard_channel_id)
+    async def handle_skullboard(
+        self, message, skullboard_channel_id, guild_id, threshold
+    ):
+        """Handle reactions and update/delete skullboard messages for a guild"""
+        skullboard_channel = (
+            self.client.get_channel(int(skullboard_channel_id))
+            if skullboard_channel_id
+            else None
+        )
         if not skullboard_channel:
             return
 
@@ -57,11 +75,11 @@ class SkullboardManager:
         current_count = await self.get_reaction_count(message, emoji)
 
         await self.update_or_send_skullboard_message(
-            skullboard_channel, message, current_count, emoji
+            skullboard_channel, message, current_count, emoji, guild_id, threshold
         )
 
     async def update_or_send_skullboard_message(
-        self, channel, message, current_count, emoji
+        self, channel, message, current_count, emoji, guild_id, threshold
     ):
         """Update or send skullboard message"""
         skullboard_message_id = None
@@ -74,7 +92,7 @@ class SkullboardManager:
 
         try:
             await self.db.update_skull_post(
-                message_id, author_id, channel_id, message_time, current_count
+                message_id, author_id, channel_id, message_time, current_count, guild_id
             )
         except Exception as e:
             print("Could not update skull post for ", message_id)
@@ -85,7 +103,7 @@ class SkullboardManager:
                 skullboard_message_id = skullboard_message.id
                 break
 
-        if current_count >= self.db.threshold:
+        if current_count >= (threshold or 0):
             if skullboard_message_id:
                 await self.edit_or_send_skullboard_message(
                     channel,
@@ -248,7 +266,7 @@ class SkullGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="skull", description="Skullboard queries")
         self.db = SkullboardDB()
-        self.skullboard_channel_id = int(str(os.environ.get("SKULLBOARD_CHANNEL_ID")))
+        self.admin_db = AdminSettingsDB()
 
     def interaction_handler(func: Callable[[], Awaitable[Response]]):
         """Wrapper to handle skullboard command interactions and errors"""
@@ -303,10 +321,13 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="about", description="Learn about the Skullboard")
     @interaction_handler
     async def about(self, interaction: Interaction) -> Response:
+        guild_id = _get_guild_id(interaction)
+        channel_id, required = self.admin_db.get_server_settings(str(guild_id))
+        channel_mention = f"<#{channel_id}>" if channel_id else "(not configured)"
         skullboard_info = (
             "## 💀 WELCOME TO THE SKULLZONE 💀\n\n"
             "The **Skullboard** is a fun way to track popular posts and active users in the CS Club! 💀\n"
-            f"When a post receives a certain number of 💀 reactions, it gets added to <#{self.skullboard_channel_id}>. 💀\n"
+            f"When a post receives a certain number of 💀 reactions, it gets added to {channel_mention}. 💀\n"
             "Users earn a 💀 for their popular posts, and these 💀 contribute to their overall ranking. 💀\n"
         )
         cmds = [
@@ -329,7 +350,8 @@ class SkullGroup(app_commands.Group):
     )
     @interaction_handler
     async def rank(self, interaction: Interaction):
-        rankings = await self.db.get_user_rankings()
+        guild_id = _get_guild_id(interaction)
+        rankings = await self.db.get_user_rankings(10, str(guild_id))
         if not rankings:
             raise Exception("Database Error")
 
@@ -353,7 +375,8 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="hof", description="Get top Skullboard posts (all-time)")
     @interaction_handler
     async def hof(self, interaction: Interaction) -> Response:
-        hof_entries = await self.db.get_HOF()
+        guild_id = _get_guild_id(interaction)
+        hof_entries = await self.db.get_HOF(10, str(guild_id))
         if not hof_entries:
             raise Exception("Database Error")
         # Warning: description in embed cannot be longer than 2048 characters
@@ -362,7 +385,7 @@ class SkullGroup(app_commands.Group):
         # The post date is unused, may use in future if needed.
         for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
             # Format the HoF entries into a readable message
-            line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+            line = _format_post_link(guild_id, channel_id, post_id, user_id, frequency)
             msg.append(line)
 
         msg = "\n".join(msg)
@@ -377,7 +400,8 @@ class SkullGroup(app_commands.Group):
     @app_commands.command(name="week", description="Get top posts (this week)")
     @interaction_handler
     async def week(self, interaction: Interaction) -> Response:
-        hof_entries = await self.db.get_7_day_post()
+        guild_id = _get_guild_id(interaction)
+        hof_entries = await self.db.get_7_day_post(5, str(guild_id))
         hof_entries = [
             (post_id, user_id, channel_id, day, frequency)
             for post_id, user_id, channel_id, day, frequency in hof_entries
@@ -392,7 +416,7 @@ class SkullGroup(app_commands.Group):
         # The post date is unused, may use in future if needed.
         for post_id, user_id, channel_id, day, frequency in hof_entries[:10]:
             # Format the entries into a readable message
-            line = f"💀 {frequency} : https://discord.com/channels/{self.db.guild_id}/{channel_id}/{post_id} from <@{user_id}>"
+            line = _format_post_link(guild_id, channel_id, post_id, user_id, frequency)
             msg.append(line)
 
         msg = "\n".join(msg)
@@ -424,18 +448,19 @@ class SkullGroup(app_commands.Group):
         data = []
         title = ""
         option = ""
+        guild_id = interaction.guild.id if interaction.guild else None
         if timeframe.value == "w":
             option = "This Week's"
-            data = await self.db.get_7_day_histogram()
+            data = await self.db.get_7_day_histogram(str(guild_id))
         elif timeframe.value == "m":
             option = "This Month's"
-            data = await self.db.get_30_day_histogram()
+            data = await self.db.get_30_day_histogram(str(guild_id))
         elif timeframe.value == "y":
             option = "This Year's"
-            data = await self.db.get_365_day_histogram()
+            data = await self.db.get_365_day_histogram(str(guild_id))
         elif timeframe.value == "a":
             option = "All-Time"
-            data = await self.db.get_alltime_histogram()
+            data = await self.db.get_alltime_histogram(str(guild_id))
         else:
             raise Exception("Invalid option")
         title += option

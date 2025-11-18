@@ -1,4 +1,3 @@
-import os
 import sqlite3
 from pathlib import Path
 
@@ -25,33 +24,56 @@ class AdminSettingsDB:
             for statement in AdminSettingsSQL.initialisation_tables:
                 cursor.execute(statement)
 
-            # Initialise with default values from .env
-            default_settings = {
-                "GUILD_ID": os.getenv("GUILD_ID", ""),
-                "SKULLBOARD_CHANNEL_ID": os.getenv("SKULLBOARD_CHANNEL_ID", ""),
-                "REQUIRED_REACTIONS": os.getenv("REQUIRED_REACTIONS", "3"),
-            }
-
-            # Only set defaults if the settings don't exist
-            for key, value in default_settings.items():
-                cursor.execute(
-                    "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
-                    (key, value),
-                )
-
             conn.commit()
 
-    def get_setting(self, key: str) -> str:
+    def get_setting(self, key: str, guild_id: str = None) -> str:
         """Get a setting value from the database"""
         with self.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(AdminSettingsSQL.get_setting, (key,))
+            if guild_id is None:
+                cursor.execute(AdminSettingsSQL.get_setting, (key,))
+            else:
+                cursor.execute(AdminSettingsSQL.get_guild_setting, (key, str(guild_id)))
             result = cursor.fetchone()
             return result[0] if result else None
 
-    def set_setting(self, key: str, value: str):
+    def set_setting(self, key: str, value: str, guild_id: str = None):
         """Set a setting value in the database"""
         with self.get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(AdminSettingsSQL.set_setting, (key, value))
+            if guild_id is None:
+                cursor.execute(AdminSettingsSQL.set_setting, (key, value))
+            else:
+                cursor.execute(
+                    AdminSettingsSQL.set_guild_setting, (key, str(guild_id), value)
+                )
             conn.commit()
+
+    def get_server_settings(self, guild_id: str):
+        """Return skullboard_channel_id and required_reactions for a guild as a tuple (channel_id, required_reactions).
+        Returns (None, None) if not set.
+        """
+        channel_id = self.get_setting("SKULLBOARD_CHANNEL_ID", guild_id=str(guild_id))
+        required = self.get_setting("REQUIRED_REACTIONS", guild_id=str(guild_id))
+        if required is not None:
+            try:
+                required = int(required)
+            except Exception:
+                required = None
+        return (channel_id, required)
+
+    def set_server_settings(
+        self, guild_id: str, skullboard_channel_id: str, required_reactions: int
+    ):
+        """Insert or update per-guild skullboard settings."""
+        # Use the general set_setting helper to write guild-scoped keys
+        self.set_setting(
+            "SKULLBOARD_CHANNEL_ID",
+            str(skullboard_channel_id) if skullboard_channel_id is not None else "",
+            guild_id=str(guild_id),
+        )
+        # Store required reactions as a string
+        if required_reactions is not None:
+            self.set_setting(
+                "REQUIRED_REACTIONS", str(required_reactions), guild_id=str(guild_id)
+            )

@@ -1,27 +1,20 @@
 import asyncio
 import logging
-import os
 from datetime import datetime, timezone
 
 import discord
 from discord import Interaction, TextStyle, app_commands
 from discord.ext import commands
 from discord.ui import Button, Modal, TextInput, View
-from dotenv import load_dotenv
 
-load_dotenv()
+from commands.command_helpers import require_admin
 
-COMMITTEE_ROLE_NAME = os.getenv("COMMITTEE_ROLE_NAME")
-ANON_TICKET_CHANNEL_NAME = os.getenv("ANON_TICKET_CHANNEL_NAME")
-TICKET_CATEGORY_NAME = os.getenv("TICKET_CATEGORY_NAME")
-ARCHIVE_CATEGORY_NAME = os.getenv("ARCHIVE_CATEGORY_NAME")
-LOG_CHANNEL_NAME = os.getenv("LOG_CHANNEL_NAME")
-
-
-load_dotenv()
-
-# Retrieve the list of admin usernames from the .env file
-ADMIN_USERS = os.getenv("ADMIN_USERS", "").split(",")
+# Names are assumed to be the same across guilds; channel IDs differ per guild.
+COMMITTEE_ROLE_NAME = "Committee"
+ANON_TICKET_CHANNEL_NAME = "anonymous-tickets"
+TICKET_CATEGORY_NAME = "Tickets"
+ARCHIVE_CATEGORY_NAME = "Archived Tickets"
+LOG_CHANNEL_NAME = "bot-log-ticketing"
 
 
 class TicketForm(Modal, title="Create a Ticket"):
@@ -262,25 +255,19 @@ ticket_group = app_commands.Group(name="ticket", description="Ticketing commands
 
 
 @ticket_group.command(name="panel", description="Send a ticket panel with buttons")
+@require_admin(require_guild=True)
 async def ticket_panel(interaction: Interaction):
-    user_name = interaction.user.name
-    logging.info(f"Checking admin status for user: {user_name}")
+    member = interaction.user
+    user_name = member.name
+    logging.info(f"Posting ticket panel at request of user: {user_name}")
 
-    if user_name in ADMIN_USERS:
-        logging.info(f"User {user_name} is authorised.")
-        embed = discord.Embed(
-            title="Support",
-            description="Need help? Click a button below to create a ticket.",
-            color=discord.Color.blue(),
-        )
-        await interaction.channel.send(embed=embed, view=TicketPanel())
-        await interaction.response.send_message("Ticket panel posted.", ephemeral=True)
-    else:
-        await interaction.response.send_message(
-            "You don't have permission to execute that command.", ephemeral=True
-        )
-        logging.warning(f"User {user_name} is not authorised.")
-        return
+    embed = discord.Embed(
+        title="Support",
+        description="Need help? Click a button below to create a ticket.",
+        color=discord.Color.blue(),
+    )
+    await interaction.channel.send(embed=embed, view=TicketPanel())
+    await interaction.response.send_message("Ticket panel posted.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

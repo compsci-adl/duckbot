@@ -37,25 +37,31 @@ class SkullSQL:
     initialisation_tables = [
         """
     CREATE TABLE IF NOT EXISTS alltime (
-    bucket INTEGER PRIMARY KEY,
-    frequency INTEGER
+    bucket INTEGER,
+    guildId INTEGER,
+    frequency INTEGER,
+    PRIMARY KEY (bucket, guildId)
     );""",
         """CREATE TABLE IF NOT EXISTS posts (
     postId INTEGER PRIMARY KEY,
     userId INTEGER,
     channelId INTEGER,
     day INTEGER,
-    frequency INTEGER
+    frequency INTEGER,
+    guildId INTEGER
     );""",
         """CREATE TABLE IF NOT EXISTS days (
     day INTEGER,
     bucket INTEGER,
     frequency INTEGER,
-    PRIMARY KEY (day, bucket)
+    guildId INTEGER,
+    PRIMARY KEY (day, bucket, guildId)
     );""",
         """CREATE TABLE IF NOT EXISTS users (
-    userId INTEGER PRIMARY KEY,
-    frequency INTEGER
+    userId INTEGER,
+    guildId INTEGER,
+    frequency INTEGER,
+    PRIMARY KEY (userId, guildId)
     );
     """,
         """CREATE TABLE IF NOT EXISTS hof (
@@ -63,21 +69,23 @@ class SkullSQL:
     userId INTEGER,
     channelId INTEGER,
     day INTEGER,
-    frequency INTEGER
+    frequency INTEGER,
+    guildId INTEGER
     );""",
     ]
 
     """Update the count of skull reactions for a post."""
     update_skull_post = """
-    INSERT INTO posts(postId, userId, channelId, day, frequency)
-    VALUES(?,?,?,?,?)
+    INSERT INTO posts(postId, userId, channelId, day, frequency, guildId)
+    VALUES(?,?,?,?,?,?)
     ON CONFLICT(postId) DO UPDATE SET
     frequency = excluded.frequency;
     """
 
     """Gets the top posts from the last 7 days.
     Fetches from the tracked posts in (posts)"""
-    day_7_post = """SELECT * FROM posts
+    day_7_post = """SELECT postId, userId, channelId, day, frequency FROM posts
+    WHERE guildId = ?
     ORDER BY frequency DESC, day ASC
     LIMIT ?;
     """
@@ -85,17 +93,18 @@ class SkullSQL:
     """Get the top x users by number of posts on the skullboard that reach the minimum reaction threshold.
     Combines the reaction counts of tracked posts from the last 7 days (posts), in addition to the counts of users in the (users) table. """
     user_rankings = """
-    SELECT userId, SUM(frequency) as total_frequency
+    SELECT userId, SUM(total_frequency) as total_frequency
     FROM (
-    SELECT userId, COUNT(*) AS frequency
+    SELECT userId, COUNT(*) AS total_frequency
     FROM posts
-    WHERE frequency >= ?
+    WHERE frequency >= ? AND guildId = ?
     GROUP BY userId
 
     UNION ALL
 
-    SELECT userId, frequency
+    SELECT userId, frequency as total_frequency
     FROM users
+    WHERE guildId = ?
     )
     GROUP BY userId
     ORDER BY total_frequency DESC
@@ -109,12 +118,13 @@ class SkullSQL:
     FROM (
     SELECT postId, userId, channelId, day, frequency
     FROM posts
-    WHERE frequency >= ?
+    WHERE frequency >= ? AND guildId = ?
 
     UNION ALL
 
     SELECT postId, userId, channelId, day, frequency
     FROM hof
+    WHERE guildId = ?
     )
     ORDER BY
     frequency DESC,
@@ -127,7 +137,8 @@ class SkullSQL:
     histogram_7 = """
     SELECT frequency AS bucket,
     COUNT(frequency) AS count
-    FROM   posts
+    FROM posts
+    WHERE guildId = ?
     GROUP BY bucket;"""
 
     """Get the distribution of skull post reaction counts for the last 7 days.
@@ -138,12 +149,13 @@ class SkullSQL:
     (
     select bucket,SUM(frequency) as count
     from days
-    where day > ?
+    where day > ? AND guildId = ?
     group by bucket
     union all
     SELECT frequency AS bucket,
     COUNT(frequency) AS count
-    FROM   posts
+    FROM posts
+    WHERE guildId = ?
     GROUP BY frequency
     ) AS t
     where bucket > 0
@@ -157,11 +169,13 @@ class SkullSQL:
     (
     select bucket,SUM(frequency) as count
     from days
+    where guildId = ?
     group by bucket
     union all
     SELECT frequency AS bucket,
     COUNT(frequency) AS count
-    FROM   posts
+    FROM posts
+    WHERE guildId = ?
     GROUP BY bucket
     ) AS t
     where bucket > 0
@@ -175,15 +189,18 @@ class SkullSQL:
     (
     select bucket,SUM(frequency) as count
     from days
+    where guildId = ?
     group by bucket
     union all
     SELECT frequency AS bucket,
     COUNT(frequency) AS count
-    FROM   posts
+    FROM posts
+    WHERE guildId = ?
     GROUP BY bucket
     UNION all
     select bucket,frequency as count
     From alltime
+    where guildId = ?
     ) AS t
     where bucket > 0
     GROUP BY bucket;
@@ -191,26 +208,27 @@ class SkullSQL:
 
     """Adds expired posts which meet a minimum reaction threshold into the hall of fame."""
     posts_expire_hof = """
-    INSERT INTO hof (postId, userId, channelId, day, frequency)
-    SELECT postId, userId, channelId, day, frequency
+    INSERT INTO hof (postId, userId, channelId, day, frequency, guildId)
+    SELECT postId, userId, channelId, day, frequency, guildId
     FROM posts
-    WHERE day <= ? AND frequency >= ?;
+    WHERE day <= ? AND frequency >= ? AND guildId = ?;
     """
 
     """The hof_expire_x commands are a sequence of sql commands which orders and store only the top 100 posts."""
     hof_expire_hof_1 = """
     CREATE TABLE top_posts AS
-    SELECT postId, userId, channelId, day, frequency
+    SELECT postId, userId, channelId, day, frequency, guildId
     FROM hof
+    WHERE guildId = ?
     ORDER BY frequency DESC, day DESC
     LIMIT 100;
     """
     hof_expire_hof_2 = """
-    DELETE FROM hof;
+    DELETE FROM hof WHERE guildId = ?;
     """
     hof_expire_hof_3 = """
-    INSERT INTO hof (postId, userId, channelId, day, frequency)
-    SELECT postId, userId, channelId, day, frequency
+    INSERT INTO hof (postId, userId, channelId, day, frequency, guildId)
+    SELECT postId, userId, channelId, day, frequency, guildId
     FROM top_posts;
     """
     hof_expire_hof_4 = """
@@ -225,38 +243,38 @@ class SkullSQL:
 
     """Adds the count of reactions for expired posts meeting a minimum reaction threshold to (users)."""
     posts_expire_users = """
-    INSERT INTO users (userId, frequency)
-    SELECT userId, COUNT(*) AS frequency
+    INSERT INTO users (userId, guildId, frequency)
+    SELECT userId, guildId, COUNT(*) AS frequency
     FROM posts
-    WHERE day <= ? AND frequency >= ?
-    GROUP BY userId
-    ON CONFLICT(userId) DO UPDATE SET frequency = users.frequency + excluded.frequency;
+    WHERE day <= ? AND frequency >= ? AND guildId = ?
+    GROUP BY userId, guildId
+    ON CONFLICT(userId, guildId) DO UPDATE SET frequency = users.frequency + excluded.frequency;
     """
 
     """Adds the count of reactions for expired posts to (days), for the day of expiry."""
     posts_expire_days = """
-    INSERT INTO days (day, bucket, frequency)
-    SELECT day, frequency AS bucket, COUNT(*) AS frequency
+    INSERT INTO days (day, bucket, frequency, guildId)
+    SELECT day, frequency AS bucket, COUNT(*) AS frequency, guildId
     FROM posts
-    WHERE day <= ? AND frequency > 0
-    GROUP BY day, frequency;
+    WHERE day <= ? AND frequency > 0 AND guildId = ?
+    GROUP BY day, frequency, guildId;
     """
 
     """Removes expired posts from tracked posts"""
-    posts_expire_delete = "DELETE FROM posts WHERE day <= ?;"
+    posts_expire_delete = "DELETE FROM posts WHERE day <= ? AND guildId = ?;"
 
     """Expires days older than 365 days old, into longterm tracking (alltime)"""
     days_expire_alltime = """
-    INSERT INTO alltime (bucket, frequency)
-    SELECT bucket, SUM(frequency) AS total_frequency
+    INSERT INTO alltime (bucket, guildId, frequency)
+    SELECT bucket, guildId, SUM(frequency) AS total_frequency
     FROM days
-    WHERE day < ?
-    GROUP BY bucket
-    ON CONFLICT(bucket) DO UPDATE SET frequency = alltime.frequency + EXCLUDED.frequency;
+    WHERE day < ? AND guildId = ?
+    GROUP BY bucket, guildId
+    ON CONFLICT(bucket, guildId) DO UPDATE SET frequency = alltime.frequency + EXCLUDED.frequency;
     """
 
     """Removes days older than 365 days old"""
     days_expire_delete = """
     DELETE FROM days
-    WHERE day < ?;
+    WHERE day < ? AND guildId = ?;
     """

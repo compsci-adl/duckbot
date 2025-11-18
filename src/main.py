@@ -10,7 +10,6 @@ from discord import (
     Intents,
     Interaction,
     Message,
-    Object,
     RawReactionActionEvent,
     app_commands,
 )
@@ -20,18 +19,17 @@ from dotenv import load_dotenv
 
 from commands import admin_commands, gemini, help_menu, skullboard, ticketing
 from constants.colours import LIGHT_YELLOW
+from models.databases.admin_settings_db import AdminSettingsDB
 from utils import spam_detection, time
 from utils.event_roles import EventRoleManager
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve guild ID and bot token from environment variables
-GUILD_ID = int(os.environ["GUILD_ID"])
+# Retrieve global environment variables
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-SKULLBOARD_CHANNEL_ID = int(os.environ["SKULLBOARD_CHANNEL_ID"])
-TENOR_API_KEY = os.environ["TENOR_API_KEY"]
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+TENOR_API_KEY = os.environ.get("TENOR_API_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SPAM_CHECK_MIN_MSG = 3
 MESSAGE_HISTORY_LIMIT = 1000
 
@@ -64,6 +62,7 @@ class DuckBot(commands.Bot):
             self
         )  # Initialise SkullboardManager
         self.event_role_manager = EventRoleManager(self)  # Initialise EventRoleManager
+        self.admin_db = AdminSettingsDB()
         self.prev_day = None
         self.expiry_loop = None
 
@@ -85,7 +84,7 @@ class DuckBot(commands.Bot):
         )
 
         self.admin_commands = admin_commands.AdminCommands(gemini_bot=self.gemini_model)
-        self.tree.add_command(self.admin_commands, guild=Object(GUILD_ID))
+        self.tree.add_command(self.admin_commands)
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -94,9 +93,9 @@ class DuckBot(commands.Bot):
             for attribute_name in dir(module):
                 attribute = getattr(module, attribute_name)
                 if isinstance(attribute, app_commands.Group):
-                    self.tree.add_command(attribute, guild=Object(GUILD_ID))
+                    self.tree.add_command(attribute)
         if not self.synced:  # Check if slash commands have been synced
-            await self.tree.sync(guild=Object(GUILD_ID))
+            await self.tree.sync()
             self.synced = True
         self.loop.create_task(self.run_expiry_loop())
         self.add_view(ticketing.TicketPanel())
@@ -115,8 +114,17 @@ class DuckBot(commands.Bot):
             message = await channel.fetch_message(payload.message_id)
             # Ignore reactions to own messages
             if message.author.id != self.user.id:
+                # Determine guild id
+                guild_id = getattr(payload, "guild_id", None) or (
+                    message.guild.id if message.guild else None
+                )
+                if not guild_id:
+                    return
+                channel_id, required = self.admin_db.get_server_settings(str(guild_id))
+                if channel_id is None:
+                    return
                 await self.skullboard_manager.handle_skullboard(
-                    message, SKULLBOARD_CHANNEL_ID
+                    message, channel_id, str(guild_id), required
                 )
 
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
@@ -125,8 +133,16 @@ class DuckBot(commands.Bot):
             message = await channel.fetch_message(payload.message_id)
             # Ignore reactions to own messages
             if message.author.id != self.user.id:
+                guild_id = getattr(payload, "guild_id", None) or (
+                    message.guild.id if message.guild else None
+                )
+                if not guild_id:
+                    return
+                channel_id, required = self.admin_db.get_server_settings(str(guild_id))
+                if channel_id is None:
+                    return
                 await self.skullboard_manager.handle_skullboard(
-                    message, SKULLBOARD_CHANNEL_ID
+                    message, channel_id, str(guild_id), required
                 )
 
     async def run_expiry_loop(self):
@@ -143,12 +159,12 @@ class DuckBot(commands.Bot):
 client = DuckBot()
 
 
-@client.tree.command(description="Pong!", guild=Object(GUILD_ID))
+@client.tree.command(description="Pong!")
 async def ping(interaction: Interaction):
     await interaction.response.send_message("Pong!", ephemeral=True)
 
 
-@client.tree.command(description="Ask DuckBot anything!", guild=Object(GUILD_ID))
+@client.tree.command(description="Ask DuckBot anything!")
 async def chat(interaction: Interaction, query: str | None, file: Attachment | None):
     try:
         await interaction.response.defer()
@@ -185,10 +201,7 @@ async def chat(interaction: Interaction, query: str | None, file: Attachment | N
         )
 
 
-@client.tree.command(
-    description="View useful information about using the bot.",
-    guild=Object(GUILD_ID),
-)
+@client.tree.command(description="View useful information about using the bot.")
 async def help(interaction: Interaction):  # noqa: A001
     Help_Menu_View = help_menu.HelpMenu(client)  # Creating the view for buttons
     Help_Menu_View.update_select_options()  # Creating options for select menu
@@ -216,7 +229,7 @@ async def on_message(message: Message):
 
     # If the user has sent less than SPAM_CHECK_MIN_MSG messages in the channel, check for spam
     if count < SPAM_CHECK_MIN_MSG:
-        await spam_detection.check_spam(message)
+        await spam_detection.check_spam(message, settings_db=client.admin_db)
 
     if (
         (client.user.mentioned_in(message) or "d.chat" in message.clean_content)
