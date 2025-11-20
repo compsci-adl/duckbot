@@ -8,6 +8,7 @@ import tempfile
 import time
 from collections import defaultdict
 from enum import IntEnum
+from typing import List, Optional
 
 import google.generativeai as genai
 import requests
@@ -16,6 +17,7 @@ from dotenv import load_dotenv
 from google.generativeai.types import File, HarmBlockThreshold, HarmCategory
 
 from constants.colours import LIGHT_YELLOW
+from utils.gemini_rag import build_cms_context_for_query
 
 # Load environment variables from .env file
 load_dotenv()
@@ -149,18 +151,33 @@ class GeminiBot:
                 question_url = f"https://leetcode.com/problems/{question_slug}/"
                 return question_url
             else:
-                print("No problems found.")
                 return None
         else:
-            print(f"Failed to retrieve problems: {response.status_code}")
-        return None
+            return None
 
     async def prompt_gemini(
         self, author, input_msg=None, attachment=None, show_input=True
-    ) -> (Embed, Errors):
+    ) -> tuple[Optional[List[Embed]], Optional[Errors]]:
         try:
-            payload = []
+            # Normalise input_msg: trim whitespace so that messages with only spaces
+            # do not get through as 'non-empty' content.
+            if isinstance(input_msg, str):
+                input_msg = input_msg.strip()
 
+            # If only an attachment is provided with no textual input, Gemini
+            # can error with "content must not be empty".
+            if not input_msg and attachment:
+                input_msg = "[Attachment-only request]"
+
+            # Build context if the query references CMS topics
+            payload = []
+            if isinstance(input_msg, str):
+                cms_context = build_cms_context_for_query(input_msg)
+            else:
+                cms_context = ""
+            if cms_context:
+                # Prepend context chunk, Gemini will receive it before the input
+                payload.append(f"CONTEXT:{cms_context}")
             # Form the payload to Gemini API according to the inputs provided
             if input_msg:
                 payload.append(f"INPUT:{input_msg} ANSWER:")
@@ -172,7 +189,8 @@ class GeminiBot:
                 safety_settings=SAFETY_SETTINGS,
             )
 
-            response_length = len(response.text)
+            resp_text = getattr(response, "text", "")
+            response_length = len(resp_text)
 
             if response_length > 5000:
                 logging.error(
@@ -193,7 +211,7 @@ class GeminiBot:
 
         response_embeds = []
         list_index = [i for i in range(0, response_length, 1024)]
-        split_message = [response.text[i : i + 1024] for i in list_index]
+        split_message = [resp_text[i : i + 1024] for i in list_index]
 
         for i in range(len(split_message)):
             # If first embed, title should be Ask DuckBot
@@ -259,7 +277,7 @@ class GeminiBot:
             return response_embed
 
         # Message too long
-        if len(message) > 0:
+        if message and len(message) > 0:
             if self.model.count_tokens(message).total_tokens > 5000:
                 logging.error(
                     f"GEMINI: {author} provided {self.model.count_tokens(message)} tokens to Gemini, which exceeds the limit."
@@ -344,7 +362,9 @@ class GeminiBot:
         return response_embeds
 
 
-async def upload_or_return_file_ref(attachment) -> (File, Errors):
+async def upload_or_return_file_ref(
+    attachment,
+) -> tuple[Optional[File], Optional[Errors]]:
     """Uploads the image to the Google Gemini Project
     Stored for 48 hours by default"""
 
