@@ -84,7 +84,11 @@ class DuckBot(commands.Bot):
         )
 
         self.admin_commands = admin_commands.AdminCommands(gemini_bot=self.gemini_model)
-        self.tree.add_command(self.admin_commands)
+        # Check if admin commands are already registered before adding
+        if not any(
+            cmd.name == self.admin_commands.name for cmd in self.tree.get_commands()
+        ):
+            self.tree.add_command(self.admin_commands)
 
     async def setup_hook(self):
         # Dynamically load all command groups from the commands directory
@@ -93,7 +97,11 @@ class DuckBot(commands.Bot):
             for attribute_name in dir(module):
                 attribute = getattr(module, attribute_name)
                 if isinstance(attribute, app_commands.Group):
-                    self.tree.add_command(attribute)
+                    # Check if this command group is already registered
+                    if not any(
+                        cmd.name == attribute.name for cmd in self.tree.get_commands()
+                    ):
+                        self.tree.add_command(attribute)
         if not self.synced:  # Check if slash commands have been synced
             await self.tree.sync()
             self.synced = True
