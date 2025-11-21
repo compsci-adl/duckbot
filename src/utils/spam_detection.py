@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 
 import aiohttp
 import discord
@@ -56,8 +57,8 @@ async def fetch_spam_messages():
 
 def is_spam(input_message, spam_messages, threshold=0.3):
     """
-    Detects if the input message is similar to known spam messages based on Levenshtein distance.
-    The distance is normalised, so it ranges from 0 (exact match) to 1 (completely different).
+    Advanced spam detection using multiple heuristics including similarity to known spam,
+    keyword matching, and pattern detection.
 
     Args:
     - input_message (str): The message to classify.
@@ -67,18 +68,103 @@ def is_spam(input_message, spam_messages, threshold=0.3):
     Returns:
     - bool: Indicates if the message is spam.
     """
+    score = 0
+
+    # Levenshtein similarity check
     for spam_message in spam_messages:
         # Calculate the Levenshtein distance between the input and the spam message
         distance = Levenshtein.distance(input_message.lower(), spam_message.lower())
         max_len = max(len(input_message), len(spam_message))
-        normalised_distance = distance / max_len
+        if max_len > 0:
+            normalised_distance = distance / max_len
+            # High weight for similarity to known spam
+            if normalised_distance < threshold:
+                score += 10
 
-        # If the Levenshtein distance is below the threshold, classify as spam
-        if normalised_distance < threshold:
-            return True
+    # Common spam keyword check
+    spam_keywords = [
+        "free",
+        "dm",
+        "tutors",
+        "giving away",
+        "first come first serve",
+        "hello @everyone",
+        "join our discord",
+        "email me",
+        "text me",
+        "pm me",
+        "dm me",
+        "asap",
+        "amazing condition",
+        "friend request",
+        "@everyone",
+        "giving out",
+        "for free",
+        "perfect health",
+        "good as new",
+        "perfectly working",
+        "just got a new model",
+        "can't afford one",
+        "in need of it",
+        "dm if you are interested",
+        "join our discord server",
+        "top-tier tutors",
+        "ace your assignments",
+        "ace your exams",
+        "handing out",
+        "great condition",
+        "practically new",
+        "just upgraded",
+        "pass this one on",
+        "really needs it",
+        "give out",
+        "give it out",
+        "inbox me",
+        "trying to sell",
+        "can't attend",
+        "change of plans",
+        "text me on whatsapp",
+        "save some money",
+        "pm if you are interested",
+        "email me via",
+        "whatsapp",
+    ]
 
-    # If no message is close enough to be considered spam, classify as not spam
-    return False
+    keyword_count = 0
+    lower_message = input_message.lower()
+    for kw in spam_keywords:
+        if kw.lower() in lower_message:
+            keyword_count += 1
+    if keyword_count > 0:
+        score += keyword_count * 2
+
+    # URL detection
+    url_pattern = re.compile(
+        r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+    )
+    if url_pattern.search(input_message):
+        score += 3
+
+    # Email detection
+    email_pattern = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
+    if email_pattern.search(input_message):
+        score += 2
+
+    # Phone number detection (basic US format)
+    phone_pattern = re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b")
+    if phone_pattern.search(input_message):
+        score += 2
+
+    # Excessive emojis
+    emoji_pattern = re.compile(
+        r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF]"
+    )
+    emoji_count = len(emoji_pattern.findall(input_message))
+    if emoji_count > 5:
+        score += 1
+
+    # Threshold for spam
+    return score > 6
 
 
 async def check_spam(message, settings_db=None):
