@@ -478,7 +478,8 @@ class SkullGroup(app_commands.Group):
         # Collecting stats
         count = sum([y for x, y in data])  # number of posts in total
         # number of posts meeting or exceeding threshold
-        above_threshold = sum([y for x, y in data if x >= self.db.threshold])
+        _, threshold = self.admin_db.get_server_settings(str(guild_id))
+        above_threshold = sum([y for x, y in data if x >= threshold])
         # percentile of posts meeting or exceeding threshold
         percentile = round(100 * above_threshold / count, 1)
 
