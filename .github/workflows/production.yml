@@ -1,4 +1,6 @@
 name: Production
+permissions:
+  contents: read
 
 on:
   push:
