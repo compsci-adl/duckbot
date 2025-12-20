@@ -69,7 +69,8 @@ ERROR_MESSAGES = {
 
 
 class GeminiBot:
-    REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
+    USER_REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
+    USER_REQUESTS_PER_DAY = 5
 
     def __init__(self, model_name, data_csv_path, bot, api_key):
         self.client = genai.Client(api_key=api_key)
@@ -114,18 +115,20 @@ class GeminiBot:
     def check_rate_limit(self, author_id):
         """Check if the user has exceeded their rate limit."""
         current_time = time.time()
-        request_times = self.user_requests[author_id]
 
-        # Filter out requests that happened more than a minute ago
-        request_times = [
-            timestamp for timestamp in request_times if current_time - timestamp < 60
-        ]
+        # Prune user requests older than 24 hours
+        user_times = self.user_requests[author_id]
+        user_times = [t for t in user_times if current_time - t < 86400]
+        self.user_requests[author_id] = user_times
 
-        # Update the user's request history with only the recent ones
-        self.user_requests[author_id] = request_times
+        # Count recent user requests
+        user_rpm = len([t for t in user_times if current_time - t < 60])
+        user_rpd = len(user_times)
 
-        # If the user has made more than the allowed requests in the past minute, deny the request
-        if len(request_times) >= self.REQUESTS_PER_MINUTE:
+        # Enforce per-user limits
+        if user_rpm >= self.USER_REQUESTS_PER_MINUTE:
+            return False
+        if user_rpd >= self.USER_REQUESTS_PER_DAY:
             return False
 
         # Otherwise, log the current request
