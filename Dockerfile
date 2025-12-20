@@ -1,5 +1,5 @@
 # First, build the application in the `/app` directory.
-FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim AS builder
 
 
 # Install the project into `/app`
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 
 # Then, use a final image without uv
-FROM python:3.14-slim-trixie
+FROM python:3.13-slim-trixie
 
 # Copy the application from the builder
 COPY --from=builder /app /app
