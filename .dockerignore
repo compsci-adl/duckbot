@@ -1,7 +1,15 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-**/.env
-.git
-.github
+# Ignore everything by default
+*
+
+# Keep Dockerfile and build lockfiles
+!/.dockerignore
+!Dockerfile
+!pyproject.toml
+!uv.lock
+
+# Keep the source and assets directories needed at build/runtime
+!/src
+!/assets
+
+# Ignore Python cache files
+**/__pycache__/

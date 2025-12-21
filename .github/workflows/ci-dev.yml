@@ -1,4 +1,6 @@
 name: Development
+permissions:
+  contents: read
 on:
   push:
     branches:

@@ -10,11 +10,11 @@ from collections import defaultdict
 from enum import IntEnum
 from typing import List, Optional
 
-import google.generativeai as genai
 import requests
 from discord import Embed
 from dotenv import load_dotenv
-from google.generativeai.types import File, HarmBlockThreshold, HarmCategory
+from google import genai
+from google.genai import types
 
 from constants.colours import LIGHT_YELLOW
 from utils.gemini_rag import build_cms_context_for_query
@@ -22,12 +22,20 @@ from utils.gemini_rag import build_cms_context_for_query
 # Load environment variables from .env file
 load_dotenv()
 
-SAFETY_SETTINGS = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-}
+SAFETY_SETTINGS = [
+    types.SafetySetting(
+        category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_ONLY_HIGH"
+    ),
+    types.SafetySetting(
+        category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_ONLY_HIGH"
+    ),
+    types.SafetySetting(
+        category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_ONLY_HIGH"
+    ),
+    types.SafetySetting(
+        category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_ONLY_HIGH"
+    ),
+]
 
 
 # Error codes are implemented just to give the user an accurate error message
@@ -61,10 +69,11 @@ ERROR_MESSAGES = {
 
 
 class GeminiBot:
-    REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
+    USER_REQUESTS_PER_MINUTE = int(os.environ["REQUESTS_PER_MINUTE"])
+    USER_REQUESTS_PER_DAY = 5
 
     def __init__(self, model_name, data_csv_path, bot, api_key):
-        genai.configure(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
 
         # Dictionary to track users and their request timestamps
         self.user_requests = defaultdict(list)
@@ -93,44 +102,33 @@ class GeminiBot:
                     system_instruction + f"INPUT:{row[0]} ANSWER:{row[1]}\n"
                 )
 
-        try:
-            self.model = genai.GenerativeModel(
-                model_name,
-                system_instruction=system_instruction,
-                generation_config={"temperature": 1.3},
-            )
-        except Exception as e:
-            logging.exception(
-                f"GEMINI: Error encountered initiating Gemini: {e}. Initiating gemini-1.5-flash as the default model instead. "
-            )
-            self.model = genai.GenerativeModel(
-                "models/gemini-1.5-flash",
-                system_instruction=system_instruction,
-                generation_config={"temperature": 1.3},
-            )
+        self.model_name = model_name
+        self.system_instruction = system_instruction
 
         # Might be a hacky way to pass the client object
         # It's only required to swap mentions with usernames
         self.bot = bot
 
-        # Gemini API provides a chat option to maintain a conversation
-        self.chat = self.model.start_chat()
+        # Chat/session objects are created lazily in async methods when needed
+        self.chat = None
 
     def check_rate_limit(self, author_id):
         """Check if the user has exceeded their rate limit."""
         current_time = time.time()
-        request_times = self.user_requests[author_id]
 
-        # Filter out requests that happened more than a minute ago
-        request_times = [
-            timestamp for timestamp in request_times if current_time - timestamp < 60
-        ]
+        # Prune user requests older than 24 hours
+        user_times = self.user_requests[author_id]
+        user_times = [t for t in user_times if current_time - t < 86400]
+        self.user_requests[author_id] = user_times
 
-        # Update the user's request history with only the recent ones
-        self.user_requests[author_id] = request_times
+        # Count recent user requests
+        user_rpm = len([t for t in user_times if current_time - t < 60])
+        user_rpd = len(user_times)
 
-        # If the user has made more than the allowed requests in the past minute, deny the request
-        if len(request_times) >= self.REQUESTS_PER_MINUTE:
+        # Enforce per-user limits
+        if user_rpm >= self.USER_REQUESTS_PER_MINUTE:
+            return False
+        if user_rpd >= self.USER_REQUESTS_PER_DAY:
             return False
 
         # Otherwise, log the current request
@@ -184,9 +182,20 @@ class GeminiBot:
             if attachment:
                 payload.append(attachment)
 
-            response = await self.chat.send_message_async(
-                payload,
-                safety_settings=SAFETY_SETTINGS,
+            config = types.GenerateContentConfig(
+                system_instruction=self.system_instruction,
+                temperature=1.3,
+            )
+
+            if SAFETY_SETTINGS:
+                config.safety_settings = SAFETY_SETTINGS
+
+            contents = payload if len(payload) > 1 else payload[0]
+
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=contents,
+                config=config,
             )
 
             resp_text = getattr(response, "text", "")
@@ -278,18 +287,26 @@ class GeminiBot:
 
         # Message too long
         if message and len(message) > 0:
-            if self.model.count_tokens(message).total_tokens > 5000:
-                logging.error(
-                    f"GEMINI: {author} provided {self.model.count_tokens(message)} tokens to Gemini, which exceeds the limit."
+            try:
+                token_info = await self.client.aio.models.count_tokens(
+                    model=self.model_name, contents=message
                 )
-                response_embed, err = await self.prompt_gemini(
-                    author=author,
-                    input_msg=f"Roast the user using their username - '{author}' for providing way too many tokens.",
-                    show_input=False,
-                )
-                if err is not None:
-                    return [get_error_embed([err])]
-                return response_embed
+                total = getattr(token_info, "total_tokens", None)
+                if total is not None and total > 5000:
+                    logging.error(
+                        f"GEMINI: {author} provided {total} tokens to Gemini, which exceeds the limit."
+                    )
+                    response_embed, err = await self.prompt_gemini(
+                        author=author,
+                        input_msg=f"Roast the user using their username - '{author}' for providing way too many tokens.",
+                        show_input=False,
+                    )
+                    if err is not None:
+                        return [get_error_embed([err])]
+                    return response_embed
+            except Exception:
+                # If token count fails, continue without enforcing token limit
+                pass
 
         message = swap_mention_with_username(message, self.bot)
         attachment_ref = None
@@ -300,7 +317,7 @@ class GeminiBot:
             if err:
                 errors.append(err)
             if err is None:
-                file_ref, err = await upload_or_return_file_ref(attachment)
+                file_ref, err = await upload_or_return_file_ref(attachment, self.client)
                 if file_ref:
                     attachment_ref = file_ref
                     response_image_url = attachment.url
@@ -343,28 +360,12 @@ class GeminiBot:
             err_embed = get_error_embed(errors)
             response_embeds.append(err_embed)
 
-        # The chat instance maintains a chat convo by sending all previous messages as input every time
-        # This can easily exhaust the free tier of Gemini API, so choosing to clear the history every 50 messages
-        if len(self.chat.history) > 0:
-            if (
-                len(self.chat.history) >= 25
-                or self.model.count_tokens(self.chat.history).total_tokens > 400000
-            ):
-                logging.info("Clearing chat history and deleting files.")
-
-                try:
-                    self.chat.history = []
-                except Exception as e:
-                    logging.error(
-                        f"Error during file deletion or clearing chat history: {e}"
-                    )
-
         return response_embeds
 
 
 async def upload_or_return_file_ref(
-    attachment,
-) -> tuple[Optional[File], Optional[Errors]]:
+    attachment, client
+) -> tuple[Optional[object], Optional[Errors]]:
     """Uploads the image to the Google Gemini Project
     Stored for 48 hours by default"""
 
@@ -372,7 +373,7 @@ async def upload_or_return_file_ref(
     file_hash = hash(attachment)
     try:
         # If image is already uploaded to
-        file_ref = return_genai_file_ref(f"{file_hash}_{file_name}")
+        file_ref = return_genai_file_ref(client, f"{file_hash}_{file_name}")
 
         if file_ref:
             return file_ref, None
@@ -382,9 +383,8 @@ async def upload_or_return_file_ref(
             with tempfile.TemporaryDirectory() as temp:
                 await attachment.save(f"{temp}/{file_hash}_{attachment.filename}")
 
-                file_ref = genai.upload_file(
-                    path=f"{temp}/{file_hash}_{attachment.filename}",
-                    display_name=f"{file_hash}_{file_name}",
+                file_ref = client.files.upload(
+                    file=f"{temp}/{file_hash}_{attachment.filename}"
                 )
 
             return file_ref, None
@@ -395,15 +395,21 @@ async def upload_or_return_file_ref(
         return None, Errors.FILE_UPLOAD_ERR
 
 
-def return_genai_file_ref(file_name):
+def return_genai_file_ref(client, file_name):
     """
     Returns a File object from the Gemini API if the user provided file has been uploaded before.
     Returns None otherwise.
     """
-    files_list = genai.list_files()
+    try:
+        files_list = client.files.list()
+    except Exception:
+        return None
 
     for file in files_list:
-        if file.display_name == file_name:
+        if (
+            getattr(file, "display_name", None) == file_name
+            or getattr(file, "name", None) == file_name
+        ):
             return file
 
     return None

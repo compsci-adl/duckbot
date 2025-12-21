@@ -12,13 +12,12 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "aiohttp>=3.10.0",
     "discord-py>=2.4.0",
-    "google-generativeai>=0.8.3",
+    "google-genai>=1.56.0",
     "levenshtein>=0.26.1",
     "matplotlib>=3.9.2",
     "pathlib>=1.0.1",
     "python-dotenv>=1.0.1",
     "pytz>=2024.2",
-    "schedule>=1.2.2",
 ]
 
 [tool.ruff]
