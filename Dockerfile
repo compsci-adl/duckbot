@@ -29,23 +29,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Then, use a final image without uv
 FROM python:3.13-slim-trixie
 
-# Setup a non-root user
-RUN groupadd --system --gid 999 nonroot \
- && useradd --system --gid 999 --uid 999 --create-home nonroot
-
 # Copy the application from the builder
-COPY --from=builder --chown=nonroot:nonroot /app /app
-
-# Ensure the database directory exists and is writable by the non-root user.
-RUN mkdir -p /app/db \
- && chown -R nonroot:nonroot /app/db \
- && chmod -R 0775 /app/db
+COPY --from=builder /app /app
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
-
-# Use the non-root user to run our application
-USER nonroot
 
 # Use `/app` as the working directory
 WORKDIR /app
