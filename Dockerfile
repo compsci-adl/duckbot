@@ -36,6 +36,10 @@ RUN groupadd --system --gid 999 nonroot \
 # Copy the application from the builder
 COPY --from=builder --chown=nonroot:nonroot /app /app
 
+# Ensure the database directory is writable by the non-root user
+RUN chown -R nonroot:nonroot /app/db \
+ && chmod -R 0775 /app/db
+
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
