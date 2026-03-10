@@ -144,12 +144,12 @@ class FNGGroup(app_commands.Group):
         tz = pytz.timezone("Australia/Adelaide")
         # Manually inputting dates
         date_stack = [
-            tz.localize(dt.datetime(2025, 10, 24, 17)),
-            tz.localize(dt.datetime(2025, 10, 10, 17)),
-            tz.localize(dt.datetime(2025, 9, 19, 17)),
-            tz.localize(dt.datetime(2025, 8, 22, 17)),
-            tz.localize(dt.datetime(2025, 5, 30, 17)),
-            tz.localize(dt.datetime(2025, 3, 28, 17)),
+            tz.localize(dt.datetime(2026, 10, 30, 17)),
+            tz.localize(dt.datetime(2026, 9, 25, 17)),
+            tz.localize(dt.datetime(2026, 8, 28, 17)),
+            tz.localize(dt.datetime(2026, 5, 29, 17)),
+            tz.localize(dt.datetime(2026, 4, 24, 17)),
+            tz.localize(dt.datetime(2026, 3, 20, 17)),
         ]
 
         # Checking if the tail date has already passed
