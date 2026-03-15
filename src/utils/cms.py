@@ -13,6 +13,7 @@ EVENTS_ENDPOINT = "events"
 COMMITTEE_ENDPOINT = "committee-members"
 PROJECTS_ENDPOINT = "projects"
 SPONSORS_ENDPOINT = "sponsors"
+COMMON_EVENTS_ENDPOINT = "common-events"
 
 _memory_cache = {}
 _cache_times = {}
@@ -80,6 +81,33 @@ def _parse_iso(dt_str: str) -> Optional[datetime]:
 def get_cached_events(force: bool = False) -> Optional[Dict[str, Any]]:
     """Return cached events data from CMS, fetching if needed."""
     return _get_cached(EVENTS_ENDPOINT, params=None, cache_key="events", force=force)
+
+
+def get_fng_food_dates(force: bool = False) -> List[datetime]:
+    """Return a list of upcoming Friday Night Games with Food dates from CMS"""
+    data = _get_cached(
+        COMMON_EVENTS_ENDPOINT,
+        params={"limit": 500},
+        cache_key="common_events",
+        force=force,
+    )
+    if not data:
+        return []
+    docs = data.get("docs", [])
+    dates = []
+    for doc in docs:
+        if "Friday Night Games with Food" in doc.get("name", ""):
+            upcoming = doc.get("upcomingDates", [])
+            for u in upcoming:
+                date_str = u.get("date")
+                dt = _parse_iso(date_str)
+                if dt:
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    dates.append(dt)
+            break
+    dates.sort(reverse=True)
+    return dates
 
 
 def get_upcoming_events(limit: int = 50, force: bool = False) -> List[Dict[str, Any]]:

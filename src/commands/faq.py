@@ -141,80 +141,75 @@ class FNGGroup(app_commands.Group):
         description="Outputs the date of the next Friday Night Games with food",
     )
     async def food(self, interaction: Interaction):
-        tz = pytz.timezone("Australia/Adelaide")
-        # Manually inputting dates
-        date_stack = [
-            tz.localize(dt.datetime(2025, 10, 24, 17)),
-            tz.localize(dt.datetime(2025, 10, 10, 17)),
-            tz.localize(dt.datetime(2025, 9, 19, 17)),
-            tz.localize(dt.datetime(2025, 8, 22, 17)),
-            tz.localize(dt.datetime(2025, 5, 30, 17)),
-            tz.localize(dt.datetime(2025, 3, 28, 17)),
-        ]
+        try:
+            await interaction.response.defer()
+            tz = pytz.timezone("Australia/Adelaide")
 
-        # Checking if the tail date has already passed
-        curr_date = dt.datetime.now(tz)
-        if curr_date > date_stack[-1]:
-            while (
-                len(date_stack) > 0 and curr_date > date_stack[-1]
-            ):  # length check was added to prevent access of first element when list was empty - this would cause a compiler error
-                date_stack.pop()
+            fng_dates = cms.get_fng_food_dates()
+            date_stack = [d.astimezone(tz) for d in fng_dates]
 
-        # Printing next time for Games Night
-        if len(date_stack) == 0:
-            await interaction.response.send_message(
-                "The next Friday Night Games with food will be next year. Thank you for being a valued member!"
-            )
-            return
-        # Determining if games night is on the same day as day of function call
-        time_difference = date_stack[-1] - curr_date
-        if date_stack[-1].date() == curr_date.date():
-            time_difference_hours = floor(time_difference.seconds / 3600)
-            time_difference_minutes = ceil((time_difference.seconds % 3600) / 60)
-            message = ""
-            # Handle hours
-            if time_difference_hours == 1:
-                message += f"The next Friday Night Games with food is on today in {time_difference_hours} hour "
+            # Checking if the tail date has already passed
+            curr_date = dt.datetime.now(tz)
+            if len(date_stack) > 0 and curr_date > date_stack[-1]:
+                while len(date_stack) > 0 and curr_date > date_stack[-1]:
+                    date_stack.pop()
+
+            # Printing next time for Games Night
+            if len(date_stack) == 0:
+                await interaction.followup.send(
+                    "The next Friday Night Games with food will be next year. Thank you for being a valued member!"
+                )
+                return
+            # Determining if games night is on the same day as day of function call
+            time_difference = date_stack[-1] - curr_date
+            if date_stack[-1].date() == curr_date.date():
+                time_difference_hours = floor(time_difference.seconds / 3600)
+                time_difference_minutes = ceil((time_difference.seconds % 3600) / 60)
+                message = ""
+                # Handle hours
+                if time_difference_hours == 1:
+                    message += f"The next Friday Night Games with food is on today in {time_difference_hours} hour "
+                else:
+                    message += f"The next Friday Night Games with food is on today in {time_difference_hours} hours "
+                # Handle minutes
+                if time_difference_minutes == 1:
+                    message += f"and {time_difference_minutes} minute at 5pm. Join us in the Duck Lounge!"
+                else:
+                    message += f"and {time_difference_minutes} minutes at 5pm. Join us in the Duck Lounge!"
+                await interaction.followup.send(message)
+                return
+
+            # Determining if games night is on the next day of function call
+            if date_stack[-1].date() == (curr_date + dt.timedelta(days=1)).date():
+                await interaction.followup.send(
+                    "The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
+                )
+                return
+
+            # Determining whether date needs a st, nd, rd or rth
+            date_num = date_stack[-1].strftime("%d")
+            # Removing zero padding if present
+            if date_num[0] == "0":
+                date_num = date_num[1:]
+            date_day = date_stack[-1].strftime("%B")
+            time_difference_days = time_difference.days
+            if curr_date.time().hour >= 17:
+                time_difference_days += 1  # This allows for a more intuitive display of the difference in days
+            message = f"The next Friday Night Games with food will be held in {time_difference.days} days on the {date_num}"
+            if date_num in {"1", "21", "31"}:
+                message += "st "
+            elif date_num in {"2", "22"}:
+                message += "nd "
+            elif date_num in {"3", "23"}:
+                message += "rd "
             else:
-                message += f"The next Friday Night Games with food is on today in {time_difference_hours} hours "
-            # Handle minutes
-            if time_difference_minutes == 1:
-                message += f"and {time_difference_minutes} minute at 5pm. Join us in the Duck Lounge!"
-            else:
-                message += f"and {time_difference_minutes} minutes at 5pm. Join us in the Duck Lounge!"
-            await interaction.response.send_message(message)
+                message += "th "
+            message += f"of {date_day}"
+            await interaction.followup.send(message)
             return
-
-        # Determining if games night is on the next day of function call
-        if date_stack[-1].date() == (curr_date + dt.timedelta(days=1)).date():
-            await interaction.response.send_message(
-                "The next Friday Night Games with food is on tomorrow. Join us in the Duck Lounge at 5pm!"
-            )
+        except Exception:
+            await interaction.followup.send("There was an error fetching FNG dates.")
             return
-
-        # Determining whether date needs a st, nd, rd or rth
-        date_num = date_stack[-1].strftime("%d")
-        # Removing zero padding if present
-        if date_num[0] == "0":
-            date_num = date_num[1:]
-        date_day = date_stack[-1].strftime("%B")
-        time_difference_days = time_difference.days
-        if curr_date.time().hour >= 17:
-            time_difference_days += (
-                1  # This allows for a more intuitive display of the difference in days
-            )
-        message = f"The next Friday Night Games with food will be held in {time_difference.days} days on the {date_num}"
-        if date_num in {1, 21, 31}:
-            message += "st "
-        elif date_num in {2, 22}:
-            message += "nd "
-        elif date_num in {3, 23}:
-            message += "rd "
-        else:
-            message += "th "
-        message += f"of {date_day}"
-        await interaction.response.send_message(message)
-        return
 
 
 class EventsGroup(app_commands.Group):
