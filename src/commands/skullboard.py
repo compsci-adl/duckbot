@@ -63,12 +63,29 @@ class SkullboardManager:
         self, message, skullboard_channel_id, guild_id, threshold
     ):
         """Handle reactions and update/delete skullboard messages for a guild"""
-        skullboard_channel = (
-            self.client.get_channel(int(skullboard_channel_id))
-            if skullboard_channel_id
-            else None
-        )
+        skullboard_channel = None
+        if skullboard_channel_id:
+            skullboard_channel = self.client.get_channel(int(skullboard_channel_id))
+            if not skullboard_channel:
+                try:
+                    skullboard_channel = await self.client.fetch_channel(
+                        int(skullboard_channel_id)
+                    )
+                except Exception as e:
+                    logging.error(
+                        f"Failed to fetch skullboard channel {skullboard_channel_id}: {e}"
+                    )
+                    return
         if not skullboard_channel:
+            return
+
+        # Guild Mismatch Guard: Prevent posting to wrong server
+        if message.guild and skullboard_channel.guild.id != message.guild.id:
+            logging.warning(
+                f"Guild mismatch: skullboard channel {skullboard_channel.id} "
+                f"belongs to guild {skullboard_channel.guild.id}, but message "
+                f"belongs to guild {message.guild.id}. Aborting."
+            )
             return
 
         emoji = "💀"
@@ -168,10 +185,28 @@ class SkullboardManager:
     ):
         """Edit or send a skullboard message"""
         # Fetch user's nickname and avatar url
+        user_nickname = message.author.display_name
+        user_avatar_url = (
+            message.author.display_avatar.url
+            if hasattr(message.author, "display_avatar")
+            else (message.author.avatar.url if message.author.avatar else "")
+        )
+
         guild = self.client.get_guild(message.guild.id)
-        member = guild.get_member(message.author.id)
-        user_nickname = member.nick if member.nick else message.author.name
-        user_avatar_url = message.author.avatar.url if message.author.avatar else ""
+        if guild:
+            member = guild.get_member(message.author.id)
+            if not member:
+                try:
+                    member = await guild.fetch_member(message.author.id)
+                except Exception:
+                    pass
+            if member:
+                user_nickname = member.nick if member.nick else member.name
+                user_avatar_url = (
+                    member.display_avatar.url
+                    if hasattr(member, "display_avatar")
+                    else (member.avatar.url if member.avatar else "")
+                )
 
         # Constructing the message content
         message_jump_url = message.jump_url
@@ -522,8 +557,9 @@ class SkullGroup(app_commands.Group):
     async def user(self, interaction: Interaction, member: Member) -> Response:
         user_id = member.id
         user_name = member.name
+        guild_id = _get_guild_id(interaction)
 
-        data = await self.db.get_user_rankings(999999)  # get all
+        data = await self.db.get_user_rankings(999999, str(guild_id))  # get all
         data = [(u_id, freq) for u_id, freq in data if freq > 0]
 
         if not data:

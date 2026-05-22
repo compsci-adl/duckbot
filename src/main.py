@@ -77,7 +77,7 @@ class DuckBot(commands.Bot):
 
         # Initialise gemini model
         self.gemini_model = gemini.GeminiBot(
-            model_name="models/gemini-2.5-flash",
+            model_name="models/gemini-3.5-flash",
             data_csv_path="src/data/duckbot_train_data.csv",
             bot=self,
             api_key=GEMINI_API_KEY,
@@ -119,7 +119,20 @@ class DuckBot(commands.Bot):
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
         if payload.emoji.name == "💀":
             channel = self.get_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
+            if not channel:
+                try:
+                    channel = await self.fetch_channel(payload.channel_id)
+                except Exception as e:
+                    logging.error(f"Failed to fetch channel {payload.channel_id}: {e}")
+                    return
+            try:
+                message = await channel.fetch_message(payload.message_id)
+            except NotFound:
+                return  # Message was deleted
+            except Exception as e:
+                logging.error(f"Failed to fetch message {payload.message_id}: {e}")
+                return
+
             # Ignore reactions to own messages
             if message.author.id != self.user.id:
                 # Determine guild id
@@ -129,7 +142,7 @@ class DuckBot(commands.Bot):
                 if not guild_id:
                     return
                 channel_id, required = self.admin_db.get_server_settings(str(guild_id))
-                if channel_id is None:
+                if not channel_id:
                     return
                 await self.skullboard_manager.handle_skullboard(
                     message, channel_id, str(guild_id), required
@@ -138,7 +151,20 @@ class DuckBot(commands.Bot):
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
         if payload.emoji.name == "💀":
             channel = self.get_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
+            if not channel:
+                try:
+                    channel = await self.fetch_channel(payload.channel_id)
+                except Exception as e:
+                    logging.error(f"Failed to fetch channel {payload.channel_id}: {e}")
+                    return
+            try:
+                message = await channel.fetch_message(payload.message_id)
+            except NotFound:
+                return  # Message was deleted
+            except Exception as e:
+                logging.error(f"Failed to fetch message {payload.message_id}: {e}")
+                return
+
             # Ignore reactions to own messages
             if message.author.id != self.user.id:
                 guild_id = getattr(payload, "guild_id", None) or (
@@ -147,7 +173,7 @@ class DuckBot(commands.Bot):
                 if not guild_id:
                     return
                 channel_id, required = self.admin_db.get_server_settings(str(guild_id))
-                if channel_id is None:
+                if not channel_id:
                     return
                 await self.skullboard_manager.handle_skullboard(
                     message, channel_id, str(guild_id), required
