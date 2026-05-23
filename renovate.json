@@ -28,13 +28,13 @@
       "enabled": false
     },
     {
-      "matchDatasources": ["pip"],
+      "matchDatasources": ["pypi"],
       "matchUpdateTypes": ["security"],
-      "groupName": "pip security updates",
-      "groupSlug": "pip-security-updates"
+      "groupName": "pypi security updates",
+      "groupSlug": "pypi-security-updates"
     },
     {
-      "matchDatasources": ["pip"],
+      "matchDatasources": ["pypi"],
       "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
       "enabled": false
     },
