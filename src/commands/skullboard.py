@@ -1,7 +1,9 @@
+import asyncio
 import logging
 import os
 from collections import Counter
 from functools import wraps
+from inspect import signature
 from io import BytesIO
 from typing import Awaitable, Callable
 
@@ -13,6 +15,7 @@ from discord import (
     File,
     Interaction,
     Member,
+    Object,
     app_commands,
 )
 from discord.errors import NotFound
@@ -47,6 +50,7 @@ class SkullboardManager:
         self.client = client
         self.db = SkullboardDB()
         self.admin_db = AdminSettingsDB()
+        self.backfill_completed = False
 
     async def get_reaction_count(self, message, emoji):
         """Get count of a specific emoji reaction on a message"""
@@ -275,6 +279,164 @@ class SkullboardManager:
             skullboard_message = await channel.fetch_message(skullboard_message_id)
             await skullboard_message.edit(content=message_content, embed=embed)
 
+    async def rebuild_reactor_totals(
+        self, messages_per_page: int = 100, page_delay: float = 1.0
+    ):
+        """Scan text channels for historical 💀 reactions and populate `reactor_posts`.
+
+        This method pages through each accessible text channel in each guild, finds
+        messages that have 💀 reactions, records each reactor in the DB and updates
+        per-channel progress so the scan can resume after restarts without reprocessing.
+        """
+        logging.info("Starting reactor totals rebuild scan")
+
+        for guild in self.client.guilds:
+            guild_id_str = str(guild.id)
+
+            # Iterate text channels sequentially to avoid rate limits
+            for channel in getattr(guild, "text_channels", []):
+                try:
+                    # Minimal permission check; if missing, skip the channel
+                    perms = channel.permissions_for(guild.me) if guild.me else None
+                    if perms and not (
+                        perms.view_channel and perms.read_message_history
+                    ):
+                        logging.info(
+                            f"Skipping channel {channel.id} due to missing permissions"
+                        )
+                        continue
+                except Exception:
+                    # If permissions cannot be determined, attempt to proceed and rely on exceptions
+                    pass
+
+                # Get progress for this channel
+                progress = await self.db.get_reactor_progress(
+                    guild_id_str, str(channel.id)
+                )
+                last_marker = None
+                completed = False
+                if progress:
+                    last_marker, completed = progress[0], bool(progress[1])
+
+                if completed:
+                    logging.info(f"Skip channel {channel.id} (already scanned)")
+                    continue
+
+                before_id = (
+                    int(last_marker) if last_marker and int(last_marker) > 0 else None
+                )
+
+                while True:
+                    try:
+                        # Page messages newest -> oldest using `before` marker
+                        if before_id:
+                            msgs = [
+                                m
+                                async for m in channel.history(
+                                    limit=messages_per_page, before=Object(id=before_id)
+                                )
+                            ]
+                        else:
+                            msgs = [
+                                m
+                                async for m in channel.history(limit=messages_per_page)
+                            ]
+                    except Exception as e:
+                        logging.exception(
+                            f"Failed to fetch history for channel {channel.id}: {e}"
+                        )
+                        break
+
+                    if not msgs:
+                        # Nothing left to scan; mark completed
+                        await self.db.set_reactor_progress(
+                            guild_id_str, str(channel.id), before_id or 0, 1
+                        )
+                        logging.info(f"Completed scanning channel {channel.id}")
+                        break
+
+                    # msgs come newest-first; we'll process them in the order returned
+                    # and use the oldest message in the page as the next `before` marker
+                    for message in msgs:
+                        # Only look for skull reactions on messages
+                        if not getattr(message, "reactions", None):
+                            continue
+
+                        for reaction in message.reactions:
+                            try:
+                                # Only process skull emoji
+                                if reaction.emoji == "💀":
+                                    async for user in reaction.users():
+                                        # Skip bot's own reactions
+                                        if user.id == self.client.user.id:
+                                            continue
+                                        try:
+                                            # If the message is within the 7-day tracking window, keep
+                                            # the reactor in the temporary `reactor_posts` table so
+                                            # live updates and expiry logic continue to work.
+                                            # For older messages, increment the long-term
+                                            # `reactors` aggregate directly so `reactor_posts` stays
+                                            # temporary-only.
+                                            message_day = time.get_day_from_timestamp(
+                                                message.created_at
+                                            )
+                                            if time.get_current_day() - 7 < message_day:
+                                                await self.db.add_reactor_post(
+                                                    message.id, user.id, guild_id_str
+                                                )
+                                            else:
+                                                await self.db.add_reactor_count(
+                                                    user.id, guild_id_str, 1
+                                                )
+                                        except Exception:
+                                            logging.exception(
+                                                "Failed to record reactor for message %s user %s",
+                                                message.id,
+                                                user.id,
+                                            )
+                            except Exception:
+                                # Reaction/users fetch may fail for permissions/rate limit; skip
+                                logging.exception(
+                                    "Failed to iterate users for reaction on message %s",
+                                    getattr(message, "id", None),
+                                )
+
+                    # Update progress marker to the oldest message id we processed in this page
+                    oldest_msg_id = msgs[-1].id
+                    await self.db.set_reactor_progress(
+                        guild_id_str, str(channel.id), oldest_msg_id, 0
+                    )
+
+                    # If we received less than a full page, we've reached the start of history
+                    if len(msgs) < messages_per_page:
+                        await self.db.set_reactor_progress(
+                            guild_id_str, str(channel.id), oldest_msg_id, 1
+                        )
+                        logging.info(
+                            f"Completed scanning channel {channel.id} (final page)"
+                        )
+                        break
+
+                    # Prepare next page marker and sleep a bit to avoid hitting rate limits
+                    before_id = oldest_msg_id
+                    await asyncio.sleep(page_delay)
+
+        logging.info("Reactor totals rebuild scan finished")
+
+        # Once the historical scan has completed for all guilds, aggregate any
+        # remaining temporary reactor_posts into the long-term `reactors` table,
+        # clear the temporary table, and mark progress as finished so subsequent
+        # reaction events update the aggregated table in real-time.
+        try:
+            await self.db.aggregate_and_clear_reactor_posts()
+            await self.db.mark_all_reactor_progress_completed()
+            self.backfill_completed = True
+            logging.info(
+                "Backfill complete: reactor_posts migrated and progress marked finished"
+            )
+        except Exception:
+            logging.exception("Failed to finalize reactor backfill")
+
 
 class Response:
     """Return type of command functions for handling data"""
@@ -309,7 +471,17 @@ class SkullGroup(app_commands.Group):
         @wraps(func)
         async def wrapper(self, interaction: Interaction, *args, **kwargs):
             try:
-                await interaction.response.defer(ephemeral=True)
+                public_flag = False
+                try:
+                    sig = signature(func)
+                    bound = sig.bind_partial(self, interaction, *args, **kwargs)
+                    public_flag = bool(bound.arguments.get("public", False))
+                except Exception:
+                    public_flag = bool(kwargs.get("public", False))
+
+                ephemeral_flag = not bool(public_flag)
+
+                await interaction.response.defer(ephemeral=ephemeral_flag)
 
                 # Call the original function
                 response = await func(self, interaction, *args, **kwargs)
@@ -329,7 +501,7 @@ class SkullGroup(app_commands.Group):
                     embed=embed,
                     file=img,
                     allowed_mentions=AllowedMentions().none(),
-                    ephemeral=True,
+                    ephemeral=ephemeral_flag,
                 )
 
             except NotFound as e:
@@ -355,7 +527,7 @@ class SkullGroup(app_commands.Group):
 
     @app_commands.command(name="about", description="Learn about the Skullboard")
     @interaction_handler
-    async def about(self, interaction: Interaction) -> Response:
+    async def about(self, interaction: Interaction, public: bool = False) -> Response:
         guild_id = _get_guild_id(interaction)
         channel_id, required = self.admin_db.get_server_settings(str(guild_id))
         channel_mention = f"<#{channel_id}>" if channel_id else "(not configured)"
@@ -371,6 +543,7 @@ class SkullGroup(app_commands.Group):
             "`/skull week` to view the top posts of the week",
             "`/skull stats` to view the distribution of skullboard posts from the past week, month, year, or all-time",
             "`/skull user` to show the total number of skullboard posts a user has, compared to other users",
+            "`/skull reactors` to view the top users who add skull reactions (all-time)",
         ]
         cmds = "\n".join(cmds)
 
@@ -384,7 +557,7 @@ class SkullGroup(app_commands.Group):
         name="rank", description="Get top Skullboard users (all-time)"
     )
     @interaction_handler
-    async def rank(self, interaction: Interaction):
+    async def rank(self, interaction: Interaction, public: bool = False):
         guild_id = _get_guild_id(interaction)
         rankings = await self.db.get_user_rankings(10, str(guild_id))
         if not rankings:
@@ -407,9 +580,139 @@ class SkullGroup(app_commands.Group):
         response = Response(embed=embed)
         return response
 
+    @app_commands.command(
+        name="reactors", description="Get top Skull reactors (all-time)"
+    )
+    @interaction_handler
+    async def reactors(
+        self, interaction: Interaction, public: bool = False
+    ) -> Response:
+        guild = interaction.guild
+        guild_id = _get_guild_id(interaction)
+        # Request more rows than we will display so we can filter out users who left
+        rankings = await self.db.get_reactor_rankings(100, str(guild_id))
+        if rankings is None:
+            raise Exception("Database Error")
+
+        # If we're in a guild context, exclude reactors who are no longer members.
+        filtered = []
+        if guild:
+            for reactor_id, frequency in rankings:
+                try:
+                    member = guild.get_member(int(reactor_id))
+                except Exception:
+                    member = None
+                if member:
+                    filtered.append((reactor_id, frequency))
+                if len(filtered) >= 10:
+                    break
+        else:
+            filtered = rankings[:10]
+
+        msg = ["### Top Reactors of All-Time:\n"]
+
+        for reactor_id, frequency in filtered[:10]:
+            line = f"💀 {frequency} : <@{reactor_id}>"
+            msg.append(line)
+        msg = "\n".join(msg)
+
+        # Compute backfill progress for this guild (percentage of eligible channels scanned)
+        backfill_text = None
+        if guild:
+            try:
+                guild_id_str = str(guild.id)
+                eligible_channels = []
+                for ch in getattr(guild, "text_channels", []):
+                    try:
+                        perms = ch.permissions_for(guild.me) if guild.me else None
+                        if perms and perms.view_channel and perms.read_message_history:
+                            eligible_channels.append(ch)
+                    except Exception:
+                        # If permission check failed, skip the channel
+                        continue
+
+                total = len(eligible_channels)
+                completed_cnt = 0
+                overall_percent = 0.0
+                if total > 0:
+                    per_channel_percents = []
+                    for ch in eligible_channels:
+                        progress = await self.db.get_reactor_progress(
+                            guild_id_str, str(ch.id)
+                        )
+                        # Fully scanned channel
+                        if progress and int(progress[1]) == 1:
+                            completed_cnt += 1
+                            per_channel_percents.append(100.0)
+                            continue
+
+                        # Partial or not-started channel: estimate progress using timestamps
+                        last_marker = None
+                        if progress:
+                            last_marker = progress[0]
+
+                        if not last_marker or int(last_marker) == 0:
+                            per_channel_percents.append(0.0)
+                            continue
+
+                        try:
+                            # newest message
+                            newest_msgs = [m async for m in ch.history(limit=1)]
+                            newest = newest_msgs[0] if newest_msgs else None
+                            # oldest message
+                            oldest_msgs = [
+                                m async for m in ch.history(limit=1, oldest_first=True)
+                            ]
+                            oldest = oldest_msgs[0] if oldest_msgs else None
+                            # message corresponding to the last processed marker
+                            processed_msg = await ch.fetch_message(int(last_marker))
+
+                            if not (newest and oldest and processed_msg):
+                                per_channel_percents.append(0.0)
+                                continue
+
+                            new_ts = newest.created_at.timestamp()
+                            old_ts = oldest.created_at.timestamp()
+                            proc_ts = processed_msg.created_at.timestamp()
+
+                            denom = new_ts - old_ts
+                            if denom <= 0:
+                                pct = 100.0 if proc_ts <= new_ts else 0.0
+                            else:
+                                pct = max(
+                                    0.0, min(100.0, 100.0 * (new_ts - proc_ts) / denom)
+                                )
+
+                            per_channel_percents.append(pct)
+                        except Exception:
+                            logging.exception(
+                                "Failed to compute progress for channel %s", ch.id
+                            )
+                            per_channel_percents.append(0.0)
+
+                    overall_percent = round(sum(per_channel_percents) / total, 1)
+                    if overall_percent < 100:
+                        backfill_text = (
+                            f"INCOMPLETE NUMBERS: Backfill progress: {overall_percent}% "
+                            f"({completed_cnt}/{total} channels scanned). Please check again later for updated numbers."
+                        )
+            except Exception:
+                logging.exception("Failed to compute reactor backfill progress")
+
+        embed = Embed(
+            title="💀   TOP REACTORS   💀",
+            colour=LIGHT_GREY,
+            description=msg,
+        )
+
+        if backfill_text:
+            embed.set_footer(text=backfill_text)
+        response = Response(embed=embed)
+        return response
+
     @app_commands.command(name="hof", description="Get top Skullboard posts (all-time)")
     @interaction_handler
-    async def hof(self, interaction: Interaction) -> Response:
+    async def hof(self, interaction: Interaction, public: bool = False) -> Response:
         guild_id = _get_guild_id(interaction)
         hof_entries = await self.db.get_HOF(10, str(guild_id))
         if not hof_entries:
@@ -434,7 +737,7 @@ class SkullGroup(app_commands.Group):
 
     @app_commands.command(name="week", description="Get top posts (this week)")
     @interaction_handler
-    async def week(self, interaction: Interaction) -> Response:
+    async def week(self, interaction: Interaction, public: bool = False) -> Response:
         guild_id = _get_guild_id(interaction)
         hof_entries = await self.db.get_7_day_post(5, str(guild_id))
         hof_entries = [
@@ -478,7 +781,10 @@ class SkullGroup(app_commands.Group):
     )
     @interaction_handler
     async def stats(
-        self, interaction: Interaction, timeframe: app_commands.Choice[str]
+        self,
+        interaction: Interaction,
+        timeframe: app_commands.Choice[str],
+        public: bool = False,
     ) -> Response:
         data = []
         title = ""
@@ -554,7 +860,9 @@ class SkullGroup(app_commands.Group):
 
     @app_commands.command(name="user", description="Get Skullboard stats for a user")
     @interaction_handler
-    async def user(self, interaction: Interaction, member: Member) -> Response:
+    async def user(
+        self, interaction: Interaction, member: Member, public: bool = False
+    ) -> Response:
         user_id = member.id
         user_name = member.name
         guild_id = _get_guild_id(interaction)

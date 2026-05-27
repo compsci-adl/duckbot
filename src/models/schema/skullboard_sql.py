@@ -3,28 +3,32 @@ ABOUT Skullboard Schema:
 
 Overview:
 
-The Skullboard database stores infomation regarding posts on the skullboard. The database tracks:
+The Skullboard database stores information regarding posts on the skullboard. The database tracks:
 - The top posts of all time
 - The top users of all time
-- The distribution for the number of skull received for posts made in the last week/month/year/alltime
+- The distribution for the number of skull reactions received for posts made in the last week/month/year/all-time
+- Top reactors (users who add the most skull reactions)
 
 Tables in this schema include:
-- (posts); posts less than 7 days old are "tracked", and have the skullcount continually updated.
-- (hof); the Hall of Fame which tracks the top 100 posts of all time
-- (users); counts the number of posts which reached a minimum reaction threshold sent by each user.
-- (days); stores the distribution of skull reactions for all posts sent within a day. stores distributions for days between 7 and 365 days ago.
-- (alltime); stores the distribution of skull reactions for all posts sent after 365 days.
+- (posts): posts less than 7 days old are tracked and have skull counts updated.
+- (hof): the Hall of Fame which tracks the top 100 posts of all time.
+- (users): counts the number of posts which reached a minimum reaction threshold sent by each user.
+- (days): stores the distribution of skull reactions for all posts sent within a day (for days between 7 and 365 days ago).
+- (alltime): stores the distribution of skull reactions for all posts older than 365 days.
+- (reactor_posts): temporary table recording which users reacted to which posts while posts are tracked.
+- (reactors): aggregated long-term counts of skull reactions added by users (updated during expiry).
 
 Info :
 
 Post tracking:
-Posts up to 7 days old are stored in (posts).
-These posts are considered "tracked", where the reaction counts to these posts are still updated in the database.
+Posts up to 7 days old are stored in (posts). These posts are considered tracked, where reaction counts to these posts are still updated.
 
 Data expiration:
-Posts older than 7 days old in (posts) are no longer "tracked", and are subject to "expiration".
-Tables like (hof),(users), and (days) store this expired data long term, for their related queries.
-A routine in DuckBot's __init__() function automatically expires content on startup and once a day.
+Posts older than 7 days in (posts) are no longer tracked and are subject to expiration. Tables like (hof), (users), (days), and (reactors) store expired data long-term for queries. A routine in DuckBot's __init__() function automatically expires content on startup and once a day.
+
+Reactor tracking:
+While a post is tracked (within the 7-day window), each skull reaction by a user is recorded in (reactor_posts). When posts expire, reactor counts are aggregated into (reactors) and reactor_posts rows for those posts are removed. This enables the `/skull reactors` command to show the users who add the most skull reactions.
+
 """
 
 
@@ -64,6 +68,25 @@ class SkullSQL:
     PRIMARY KEY (userId, guildId)
     );
     """,
+        """CREATE TABLE IF NOT EXISTS reactor_posts (
+    postId INTEGER,
+    reactorId INTEGER,
+    guildId INTEGER,
+    PRIMARY KEY (postId, reactorId)
+    );""",
+        """CREATE TABLE IF NOT EXISTS reactors (
+    reactorId INTEGER,
+    guildId INTEGER,
+    frequency INTEGER,
+    PRIMARY KEY (reactorId, guildId)
+    );""",
+        """CREATE TABLE IF NOT EXISTS reactor_progress (
+    guildId INTEGER,
+    channelId INTEGER,
+    last_message_id INTEGER,
+    completed INTEGER DEFAULT 0,
+    PRIMARY KEY (guildId, channelId)
+    );""",
         """CREATE TABLE IF NOT EXISTS hof (
     postId INTEGER PRIMARY KEY,
     userId INTEGER,
@@ -249,6 +272,97 @@ class SkullSQL:
     WHERE day <= ? AND frequency >= ? AND guildId = ?
     GROUP BY userId, guildId
     ON CONFLICT(userId, guildId) DO UPDATE SET frequency = users.frequency + excluded.frequency;
+    """
+
+    insert_reactor_post = """
+    INSERT INTO reactor_posts (postId, reactorId, guildId)
+    VALUES(?,?,?)
+    ON CONFLICT(postId, reactorId) DO NOTHING;
+    """
+
+    delete_reactor_post = """
+    DELETE FROM reactor_posts WHERE postId = ? AND reactorId = ? AND guildId = ?;
+    """
+
+    posts_expire_reactors = """
+    INSERT INTO reactors (reactorId, guildId, frequency)
+    SELECT reactorId, guildId, COUNT(*) AS frequency
+    FROM reactor_posts
+    WHERE postId IN (SELECT postId FROM posts WHERE day <= ? AND guildId = ?)
+    GROUP BY reactorId, guildId
+    ON CONFLICT(reactorId, guildId) DO UPDATE SET frequency = reactors.frequency + excluded.frequency;
+    """
+
+    posts_expire_reactor_posts_delete = """
+    DELETE FROM reactor_posts
+    WHERE postId IN (SELECT postId FROM posts WHERE day <= ? AND guildId = ?);
+    """
+
+    reactor_rankings = """
+    SELECT reactorId, SUM(total_frequency) as total_frequency
+    FROM (
+    SELECT reactorId, COUNT(*) AS total_frequency
+    FROM reactor_posts
+    WHERE guildId = ?
+    GROUP BY reactorId
+
+    UNION ALL
+
+    SELECT reactorId, frequency as total_frequency
+    FROM reactors
+    WHERE guildId = ?
+    )
+    GROUP BY reactorId
+    ORDER BY total_frequency DESC
+    LIMIT ?;
+    """
+
+    increment_reactor = """
+    INSERT INTO reactors (reactorId, guildId, frequency)
+    VALUES(?,?,?)
+    ON CONFLICT(reactorId, guildId) DO UPDATE SET
+    frequency = reactors.frequency + excluded.frequency;
+    """
+
+    reactor_progress_get = """
+    SELECT last_message_id, completed
+    FROM reactor_progress
+    WHERE guildId = ? AND channelId = ?
+    LIMIT 1;
+    """
+
+    reactor_progress_set = """
+    INSERT INTO reactor_progress (guildId, channelId, last_message_id, completed)
+    VALUES(?,?,?,?)
+    ON CONFLICT(guildId, channelId) DO UPDATE SET
+    last_message_id = excluded.last_message_id,
+    completed = excluded.completed;
+    """
+
+    aggregate_reactor_posts_all = """
+    INSERT INTO reactors (reactorId, guildId, frequency)
+    SELECT reactorId, guildId, COUNT(*) AS frequency
+    FROM reactor_posts
+    GROUP BY reactorId, guildId
+    ON CONFLICT(reactorId, guildId) DO UPDATE SET frequency = reactors.frequency + excluded.frequency;
+    """
+
+    clear_reactor_posts = """
+    DELETE FROM reactor_posts;
+    """
+
+    decrement_reactor = """
+    UPDATE reactors
+    SET frequency = CASE WHEN frequency > ? THEN frequency - ? ELSE 0 END
+    WHERE reactorId = ? AND guildId = ?;
+    """
+
+    delete_zero_reactors = """
+    DELETE FROM reactors WHERE frequency <= 0;
+    """
+
+    mark_all_reactor_progress_completed = """
+    UPDATE reactor_progress SET completed = 1;
     """
 
     """Adds the count of reactions for expired posts to (days), for the day of expiry."""

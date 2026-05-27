@@ -94,6 +94,76 @@ class SkullboardDB(Database):
         )
 
     @Database.crash_handler
+    async def add_reactor_post(self, postID, reactorID, guild_id):
+        """Record that a user reacted to a post with a skull"""
+        sql = SkullSQL.insert_reactor_post
+        return await self.execute(sql, (postID, reactorID, guild_id))
+
+    @Database.crash_handler
+    async def remove_reactor_post(self, postID, reactorID, guild_id):
+        """Remove a reactor record when a user removes their skull reaction"""
+        sql = SkullSQL.delete_reactor_post
+        return await self.execute(sql, (postID, reactorID, guild_id))
+
+    @Database.crash_handler
+    async def get_reactor_rankings(self, top_x=10, guild_id: str = None):
+        """Returns the top reactors (All Time)"""
+        sql = SkullSQL.reactor_rankings
+        return await self.execute(sql, (str(guild_id), str(guild_id), top_x), "all")
+
+    @Database.crash_handler
+    async def get_reactor_progress(self, guild_id: str, channel_id: str):
+        """Get scanning progress for a given channel in a guild.
+
+        Returns a tuple (last_message_id, completed) or None.
+        """
+        sql = SkullSQL.reactor_progress_get
+        return await self.execute(sql, (str(guild_id), str(channel_id)), "one")
+
+    @Database.crash_handler
+    async def add_reactor_count(self, reactorID, guild_id, amount: int = 1):
+        """Increment the aggregated reactor count for a user in a guild."""
+        sql = SkullSQL.increment_reactor
+        return await self.execute(sql, (reactorID, str(guild_id), int(amount)))
+
+    @Database.crash_handler
+    async def decrement_reactor_count(self, reactorID, guild_id, amount: int = 1):
+        """Decrement the aggregated reactor count for a user in a guild (floor at 0)."""
+        sql = SkullSQL.decrement_reactor
+        await self.execute(sql, (int(amount), int(amount), reactorID, str(guild_id)))
+        # Clean up any zero-or-negative rows
+        await self.execute(SkullSQL.delete_zero_reactors, None)
+
+    @Database.crash_handler
+    async def aggregate_and_clear_reactor_posts(self):
+        """Aggregate all temporary `reactor_posts` into `reactors` and clear the temporary table."""
+        # Aggregate per-reactor/guild counts into reactors
+        await self.execute(SkullSQL.aggregate_reactor_posts_all, None)
+        # Remove all temporary reactor_posts rows
+        await self.execute(SkullSQL.clear_reactor_posts, None)
+
+    @Database.crash_handler
+    async def mark_all_reactor_progress_completed(self):
+        """Mark all reactor_progress rows as completed (used after a full backfill)."""
+        return await self.execute(SkullSQL.mark_all_reactor_progress_completed, None)
+
+    @Database.crash_handler
+    async def set_reactor_progress(
+        self, guild_id: str, channel_id: str, last_message_id: int, completed: int = 0
+    ):
+        """Set scanning progress for a given channel in a guild."""
+        sql = SkullSQL.reactor_progress_set
+        return await self.execute(
+            sql,
+            (
+                str(guild_id),
+                str(channel_id),
+                int(last_message_id or 0),
+                int(bool(completed)),
+            ),
+        )
+
+    @Database.crash_handler
     async def expire(self):
         """
         SQL commands for expiration follow the format:
@@ -125,6 +195,12 @@ class SkullboardDB(Database):
             # Expiring "posts" table (7 days or older) for this guild
             await self.execute(SkullSQL.posts_expire_hof, (week_ago, threshold, gid))
             await self.execute(SkullSQL.posts_expire_users, (week_ago, threshold, gid))
+
+            # Aggregate reactor counts for expired posts and cleanup reactor_posts
+            await self.execute(SkullSQL.posts_expire_reactors, (week_ago, gid))
+            await self.execute(
+                SkullSQL.posts_expire_reactor_posts_delete, (week_ago, gid)
+            )
             await self.execute(SkullSQL.posts_expire_days, (week_ago, gid))
             await self.execute(SkullSQL.posts_expire_delete, (week_ago, gid))
 
