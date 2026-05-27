@@ -65,6 +65,7 @@ class DuckBot(commands.Bot):
         self.admin_db = AdminSettingsDB()
         self.prev_day = None
         self.expiry_loop = None
+        self.reactor_scan_done = False
 
         # logging
         logging.basicConfig(
@@ -110,6 +111,13 @@ class DuckBot(commands.Bot):
 
     async def on_ready(self):
         print(f"Say hi to {self.user}!")
+        # Kick off a one-time historical reactor scan to populate reactor totals
+        if not self.reactor_scan_done:
+            try:
+                self.loop.create_task(self.skullboard_manager.rebuild_reactor_totals())
+                self.reactor_scan_done = True
+            except Exception:
+                logging.exception("Failed to start reactor rebuild task")
 
     # Override on_message method with correct parameters
     async def on_message(self, message):
@@ -144,6 +152,19 @@ class DuckBot(commands.Bot):
                 channel_id, required = self.admin_db.get_server_settings(str(guild_id))
                 if not channel_id:
                     return
+                # Record reactor (who added the skull) and update skullboard
+                try:
+                    # payload.user_id is the ID of the user who reacted
+                    if getattr(payload, "user_id", None) is not None:
+                        # Only track reactor posts for messages within the 7-day tracking window
+                        message_day = time.get_day_from_timestamp(message.created_at)
+                        if time.get_current_day() - 7 < message_day:
+                            await self.skullboard_manager.db.add_reactor_post(
+                                payload.message_id, payload.user_id, str(guild_id)
+                            )
+                except Exception:
+                    logging.exception("Failed to record reactor post")
+
                 await self.skullboard_manager.handle_skullboard(
                     message, channel_id, str(guild_id), required
                 )
@@ -175,6 +196,18 @@ class DuckBot(commands.Bot):
                 channel_id, required = self.admin_db.get_server_settings(str(guild_id))
                 if not channel_id:
                     return
+                # Remove reactor record and update skullboard
+                try:
+                    if getattr(payload, "user_id", None) is not None:
+                        # Only modify reactor_posts for messages within the 7-day tracking window
+                        message_day = time.get_day_from_timestamp(message.created_at)
+                        if time.get_current_day() - 7 < message_day:
+                            await self.skullboard_manager.db.remove_reactor_post(
+                                payload.message_id, payload.user_id, str(guild_id)
+                            )
+                except Exception:
+                    logging.exception("Failed to remove reactor post")
+
                 await self.skullboard_manager.handle_skullboard(
                     message, channel_id, str(guild_id), required
                 )
