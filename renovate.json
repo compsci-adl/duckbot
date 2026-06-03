@@ -3,7 +3,6 @@
   "extends": [
     "config:recommended",
     "docker:pinDigests",
-    "helpers:pinGitHubActionDigests",
     ":pinDevDependencies",
     ":maintainLockFilesWeekly"
   ],
@@ -15,13 +14,13 @@
   "prHourlyLimit": 0,
   "separateMinorPatch": false,
   "separateMultipleMajor": false,
-  "minimumReleaseAge": "3 days",
   "packageRules": [
     {
       "matchDatasources": ["github-actions"],
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": ["major", "security", "pin"],
       "groupName": "GitHub Actions major updates",
-      "groupSlug": "github-actions-major-updates"
+      "groupSlug": "github-actions-major-updates",
+      "minimumReleaseAge": "3 days"
     },
     {
       "matchDatasources": ["github-actions"],
@@ -30,7 +29,7 @@
     },
     {
       "matchDatasources": ["pypi"],
-      "matchUpdateTypes": ["security"],
+      "matchUpdateTypes": ["security", "pin"],
       "groupName": "pypi security updates",
       "groupSlug": "pypi-security-updates"
     },
@@ -41,7 +40,7 @@
     },
     {
       "matchDatasources": ["docker"],
-      "matchUpdateTypes": ["security"],
+      "matchUpdateTypes": ["security", "pin"],
       "groupName": "docker security updates",
       "groupSlug": "docker-security-updates"
     },
