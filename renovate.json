@@ -65,7 +65,9 @@
     }
   ],
   "pep723": {
-    "fileMatch": ["(^|/)[^/]*\\.py$"]
+    "managerFilePatterns": [
+      "/(^|/)[^/]*\\.py$/"
+    ]
   },
   "vulnerabilityAlerts": {
     "enabled": true
