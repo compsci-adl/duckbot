@@ -19,21 +19,21 @@
     {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["major"],
-      "groupName": "GitHub Actions major updates",
+      "groupName": "GitHub Actions updates",
       "groupSlug": "github-actions-major-updates",
       "minimumReleaseAge": "7 days"
     },
     {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["pin"],
-      "groupName": "GitHub Actions pin updates",
+      "groupName": "GitHub Actions updates",
       "groupSlug": "github-actions-pin-updates",
       "minimumReleaseAge": "3 days"
     },
     {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["security"],
-      "groupName": "GitHub Actions security updates",
+      "groupName": "GitHub Actions updates",
       "groupSlug": "github-actions-security-updates"
     },
     {
@@ -44,7 +44,7 @@
     {
       "matchManagers": ["pep621", "pep723", "pre-commit"],
       "matchUpdateTypes": ["security", "pin"],
-      "groupName": "python security updates",
+      "groupName": "python updates",
       "groupSlug": "python-security-updates"
     },
     {
@@ -55,7 +55,7 @@
     {
       "matchDatasources": ["docker"],
       "matchUpdateTypes": ["security", "pin"],
-      "groupName": "docker security updates",
+      "groupName": "docker updates",
       "groupSlug": "docker-security-updates"
     },
     {
