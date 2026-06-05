@@ -3,6 +3,7 @@
   "extends": [
     "config:recommended",
     "docker:pinDigests",
+    "helpers:pinGitHubActionDigests",
     ":pinDevDependencies",
     ":maintainLockFilesWeekly"
   ],
@@ -16,25 +17,38 @@
   "separateMultipleMajor": false,
   "packageRules": [
     {
-      "matchDatasources": ["github-actions"],
-      "matchUpdateTypes": ["major", "security", "pin"],
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
       "groupName": "GitHub Actions major updates",
       "groupSlug": "github-actions-major-updates",
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["pin"],
+      "groupName": "GitHub Actions pin updates",
+      "groupSlug": "github-actions-pin-updates",
       "minimumReleaseAge": "3 days"
     },
     {
-      "matchDatasources": ["github-actions"],
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["security"],
+      "groupName": "GitHub Actions security updates",
+      "groupSlug": "github-actions-security-updates"
+    },
+    {
+      "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "enabled": false
     },
     {
-      "matchDatasources": ["pypi"],
+      "matchManagers": ["pep621", "pep723", "pre-commit"],
       "matchUpdateTypes": ["security", "pin"],
-      "groupName": "pypi security updates",
-      "groupSlug": "pypi-security-updates"
+      "groupName": "python security updates",
+      "groupSlug": "python-security-updates"
     },
     {
-      "matchDatasources": ["pypi"],
+      "matchManagers": ["pep621", "pep723", "pre-commit"],
       "matchUpdateTypes": ["major", "minor", "patch", "digest"],
       "enabled": false
     },
@@ -50,6 +64,9 @@
       "enabled": false
     }
   ],
+  "pep723": {
+    "fileMatch": ["(^|/)[^/]*\\.py$"]
+  },
   "vulnerabilityAlerts": {
     "enabled": true
   },

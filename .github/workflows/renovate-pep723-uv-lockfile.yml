@@ -1,0 +1,38 @@
+name: Update PEP 723 Script Lockfiles (Renovate)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/*.py'
+
+permissions:
+  contents: write
+
+jobs:
+  update-lockfiles:
+    runs-on: ubuntu-latest
+    if: github.actor == 'renovate[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Update PEP 723 lockfiles
+        run: |
+          for f in $(find . -name "*.py" -not -path "*/.*" -not -path "./.venv/*"); do
+            if [ -f "$f.lock" ]; then
+              echo "Updating lockfile for $f..."
+              uv lock --script "$f"
+            fi
+          done
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(deps): update PEP 723 script lockfile(s)"
