@@ -28,7 +28,7 @@ load_dotenv()
 
 # Retrieve global environment variables
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-TENOR_API_KEY = os.environ.get("TENOR_API_KEY", "")
+KLIPY_API_KEY = os.environ.get("KLIPY_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SPAM_CHECK_MIN_MSG = 3
 MESSAGE_HISTORY_LIMIT = 1000

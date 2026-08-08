@@ -75,7 +75,7 @@ jobs:
           USER: ${{ secrets.SSH_EC2_USER }}
           GUILD_ID: ${{ secrets.GUILD_ID }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          TENOR_API_KEY: ${{ secrets.TENOR_API_KEY }}
+          KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           REQUESTS_PER_MINUTE: ${{ secrets.REQUESTS_PER_MINUTE }}
           CMS_URL: ${{ secrets.CMS_URL }}
@@ -87,7 +87,7 @@ jobs:
             aws s3 cp s3://${{ secrets.AWS_S3_BUCKET }}/duckbot/docker-compose.yml .
             echo GUILD_ID=${{ secrets.GUILD_ID }} > .env
             echo BOT_TOKEN=${{ secrets.BOT_TOKEN }} >> .env
-            echo TENOR_API_KEY=${{ secrets.TENOR_API_KEY }} >> .env
+            echo KLIPY_API_KEY=${{ secrets.KLIPY_API_KEY }} >> .env
             echo GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} >> .env
             echo REQUESTS_PER_MINUTE=${{ secrets.REQUESTS_PER_MINUTE }} >> .env
             echo CMS_URL=${{ secrets.CMS_URL }} >> .env
