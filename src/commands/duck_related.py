@@ -5,7 +5,7 @@ import aiohttp
 from discord import Embed, Interaction, app_commands
 
 from constants.duck_data import DUCK_FACTS, DUCK_JOKES
-from utils.tenor import get_tenor_gif
+from utils.klipy import get_klipy_gif
 
 DUCK_PIC_API_URL = (
     "https://random-d.uk/api/v2/random?type=jpg"  # Duck picture API by random-d.uk
@@ -36,7 +36,7 @@ class DuckCommands(app_commands.Group):
         """Send a random duck GIF."""
         await interaction.response.defer()
         search_term = "duck"
-        gif_url = await get_tenor_gif(search_term)
+        gif_url = await get_klipy_gif(search_term)
         if gif_url:
             # Create an embed with the GIF
             embed = Embed(title="Here's a random duck gif!")

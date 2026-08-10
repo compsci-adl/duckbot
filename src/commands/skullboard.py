@@ -29,7 +29,7 @@ from utils import time
 from utils.plotting import get_histogram_image
 
 load_dotenv()
-TENOR_API_KEY = os.getenv("TENOR_API_KEY")
+KLIPY_API_KEY = os.getenv("KLIPY_API_KEY")
 
 
 def _get_guild_id(interaction: Interaction):
@@ -149,33 +149,32 @@ class SkullboardManager:
 
     @staticmethod
     def get_gif_id(url: str) -> str:
-        """Extract Tenor GIF ID from URL"""
-        base_url = "tenor.com/view/"
+        """Extract Klipy GIF ID from URL"""
         url = SkullboardManager._simplify(url.casefold())
-        if not url.startswith(base_url):
-            return None
-        gif_name = url.replace(base_url, "")
-        gif_id = gif_name.split("-")[-1]
-        return gif_id
+        for prefix in ("klipy.com/gif/", "klipy.com/gifs/"):
+            if url.startswith(prefix):
+                print(url.replace(prefix, "").split("/")[0])
+                return url.replace(prefix, "").split("/")[0]
+        return None
 
     @staticmethod
     async def get_gif_url(view_url):
-        """Get URL of GIF from a Tenor view URL"""
+        """Get URL of GIF from a Klipy view URL"""
         gifid = SkullboardManager.get_gif_id(view_url)
         if not gifid:
-            logging.warning(f"Invalid Tenor URL: {view_url}")
+            logging.warning(f"Invalid Klipy URL: {view_url}")
             return None
         async with aiohttp.ClientSession() as session:
-            url = (
-                f"https://tenor.googleapis.com/v2/posts?ids={gifid}&key={TENOR_API_KEY}"
-            )
-            async with session.get(url) as r:
+            url = f"https://api.klipy.com/api/v1/{KLIPY_API_KEY}/gifs/items"
+            async with session.get(url, params={"slugs": gifid}) as r:
                 if r.status == 200:
                     data = await r.json()
-                    gif_url = data["results"][0]["media_formats"]["gif"]["url"]
-                    return gif_url
+                    results = data.get("data", {}).get("data", [])
+                    if not results:
+                        return None
+                    return results[0]["file"]["hd"]["gif"]["url"]
                 else:
-                    logging.error(f"Tenor API error for ID {gifid}: status {r.status}")
+                    logging.error(f"Klipy API error for ID {gifid}: status {r.status}")
                     return None
 
     async def edit_or_send_skullboard_message(
@@ -223,7 +222,7 @@ class SkullboardManager:
             colour=LIGHT_GREY,
         )
 
-        if message.content.startswith("https://tenor.com/view/"):
+        if message.content.startswith("https://klipy.com/"):
             # Constructing the embed
             embed = Embed(
                 timestamp=message.created_at,
@@ -237,7 +236,7 @@ class SkullboardManager:
                 embed.set_image(url=gif_url)
             else:
                 logging.warning(
-                    f"Failed to retrieve GIF URL for Tenor link: {message.content}"
+                    f"Failed to retrieve GIF URL for Klipy link: {message.content}"
                 )
 
         elif message.content.strip().startswith(
