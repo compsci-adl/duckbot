@@ -1,3 +1,5 @@
+import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
@@ -6,7 +8,10 @@ import requests
 
 from utils import cms_helpers
 
-BASE_CMS_URL = "https://cms.csclub.org.au/api"
+_raw_cms_url = (os.getenv("CMS_URL") or "").strip().strip('"').strip("'").rstrip("/")
+if not _raw_cms_url:
+    _raw_cms_url = "https://cms.csclub.org.au"
+BASE_CMS_URL = _raw_cms_url if _raw_cms_url.endswith("/api") else f"{_raw_cms_url}/api"
 CACHE_TTL = 600  # 10 minutes
 
 EVENTS_ENDPOINT = "events"
@@ -39,7 +44,11 @@ def _fetch_from_cms(
             resp = requests.get(url, timeout=timeout)
         if resp.status_code == 200:
             return resp.json()
+        logging.error(
+            f"CMS request to {url} failed with status {resp.status_code}: {resp.text[:200]}"
+        )
     except Exception:
+        logging.exception(f"Exception fetching from CMS URL {url}")
         return None
     return None
 
@@ -97,7 +106,8 @@ def get_fng_food_dates(force: bool = False) -> List[datetime]:
     adelaide_tz = ZoneInfo("Australia/Adelaide")
     dates = []
     for doc in docs:
-        if "Friday Night Games with Food" in doc.get("name", ""):
+        name = (doc.get("name") or "").lower()
+        if "friday night games" in name and "food" in name:
             for u in doc.get("upcomingDates", []):
                 dt = _parse_iso(u.get("date"))
                 if dt:
