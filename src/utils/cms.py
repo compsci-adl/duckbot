@@ -17,12 +17,13 @@ def _get_safe_base_cms_url() -> str:
     if raw:
         try:
             parsed = urlparse(raw if "://" in raw else f"https://{raw}")
-            if parsed.scheme in ("http", "https") and (
-                parsed.hostname in ALLOWED_CMS_HOSTS
-                or (parsed.hostname and parsed.hostname.endswith(".csclub.org.au"))
+            host = (parsed.hostname or "").lower()
+            scheme = parsed.scheme.lower()
+            if scheme in ("http", "https") and (
+                host in ALLOWED_CMS_HOSTS or host.endswith(".csclub.org.au")
             ):
-                base = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
-                return base if base.endswith("/api") else f"{base}/api"
+                port = f":{parsed.port}" if parsed.port else ""
+                return f"{scheme}://{host}{port}/api"
         except Exception:
             pass
     return "https://cms.csclub.org.au/api"
