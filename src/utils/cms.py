@@ -7,7 +7,7 @@ import requests
 from utils import cms_helpers
 
 BASE_CMS_URL = "https://cms.csclub.org.au/api"
-CACHE_TTL = 86400  # 1 day
+CACHE_TTL = 600  # 10 minutes
 
 EVENTS_ENDPOINT = "events"
 COMMITTEE_ENDPOINT = "committee-members"
@@ -84,7 +84,7 @@ def get_cached_events(force: bool = False) -> Optional[Dict[str, Any]]:
 
 
 def get_fng_food_dates(force: bool = False) -> List[datetime]:
-    """Return a list of upcoming Friday Night Games with Food dates from CMS"""
+    """Return a list of upcoming Friday Night Games with Food dates from CMS, normalised to 5pm Adelaide time."""
     data = _get_cached(
         COMMON_EVENTS_ENDPOINT,
         params={"limit": 500},
@@ -94,20 +94,27 @@ def get_fng_food_dates(force: bool = False) -> List[datetime]:
     if not data:
         return []
     docs = data.get("docs", [])
+    adelaide_tz = ZoneInfo("Australia/Adelaide")
     dates = []
     for doc in docs:
         if "Friday Night Games with Food" in doc.get("name", ""):
-            upcoming = doc.get("upcomingDates", [])
-            for u in upcoming:
-                date_str = u.get("date")
-                dt = _parse_iso(date_str)
+            for u in doc.get("upcomingDates", []):
+                dt = _parse_iso(u.get("date"))
                 if dt:
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    dates.append(dt)
+                    d = dt if dt.tzinfo is None else dt.astimezone(adelaide_tz)
+                    dates.append(
+                        datetime(
+                            d.year,
+                            d.month,
+                            d.day,
+                            17,
+                            0,
+                            0,
+                            tzinfo=adelaide_tz,
+                        )
+                    )
             break
-    dates.sort(reverse=True)
-    return dates
+    return sorted(set(dates), reverse=True)
 
 
 def get_upcoming_events(limit: int = 50, force: bool = False) -> List[Dict[str, Any]]:
