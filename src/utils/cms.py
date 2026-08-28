@@ -19,9 +19,7 @@ def _get_safe_base_cms_url() -> str:
             parsed = urlparse(raw if "://" in raw else f"https://{raw}")
             host = (parsed.hostname or "").lower()
             scheme = parsed.scheme.lower()
-            if scheme in ("http", "https") and (
-                host in ALLOWED_CMS_HOSTS or host.endswith(".csclub.org.au")
-            ):
+            if scheme in ("http", "https") and host in ALLOWED_CMS_HOSTS:
                 port = f":{parsed.port}" if parsed.port else ""
                 return f"{scheme}://{host}{port}/api"
         except Exception:
