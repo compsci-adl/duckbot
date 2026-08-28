@@ -28,28 +28,33 @@ def _fetch_from_cms(
     endpoint: str, params: Dict[str, Any] | None = None, timeout: int = 50
 ) -> Optional[Dict[str, Any]]:
     """Fetch raw JSON data from the CMS API endpoint with optional query params."""
-    url = f"{BASE_CMS_URL}/{endpoint.lstrip('/')}"
-    try:
-        # Ensure a default limit for CMS queries unless explicitly provided by callers
-        if params is None:
-            params = {"limit": 500}
-        elif "limit" not in params:
-            # Don't mutate caller's dict
-            params = dict(params)
-            params["limit"] = 500
+    req_params = dict(params or {})
+    if "limit" not in req_params:
+        req_params["limit"] = 500
 
-        if params:
-            resp = requests.get(url, params=params, timeout=timeout)
-        else:
-            resp = requests.get(url, timeout=timeout)
-        if resp.status_code == 200:
-            return resp.json()
-        logging.error(
-            f"CMS request to {url} failed with status {resp.status_code}: {resp.text[:200]}"
-        )
-    except Exception:
-        logging.exception(f"Exception fetching from CMS URL {url}")
-        return None
+    urls_to_try = [
+        f"{BASE_CMS_URL}/{endpoint.lstrip('/')}",
+        f"https://cms.csclub.org.au/api/{endpoint.lstrip('/')}",
+    ]
+    seen = set()
+    headers = {"User-Agent": "DuckBot/1.0 (CS Club Adelaide)"}
+
+    for url in urls_to_try:
+        if url in seen:
+            continue
+        seen.add(url)
+        try:
+            resp = requests.get(
+                url, params=req_params, headers=headers, timeout=timeout
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            logging.error(
+                f"CMS request to {url} failed with status {resp.status_code}: {resp.text[:200]}"
+            )
+        except Exception:
+            logging.exception(f"Exception fetching from CMS URL {url}")
+
     return None
 
 
