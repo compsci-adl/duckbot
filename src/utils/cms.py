@@ -2,23 +2,48 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 import requests
 
 from utils import cms_helpers
 
-_raw_cms_url = (os.getenv("CMS_URL") or "").strip().strip('"').strip("'").rstrip("/")
-if not _raw_cms_url:
-    _raw_cms_url = "https://cms.csclub.org.au"
-BASE_CMS_URL = _raw_cms_url if _raw_cms_url.endswith("/api") else f"{_raw_cms_url}/api"
-CACHE_TTL = 600  # 10 minutes
+ALLOWED_CMS_HOSTS = {"cms.csclub.org.au", "cms", "localhost", "127.0.0.1"}
+
+
+def _get_safe_base_cms_url() -> str:
+    raw = (os.getenv("CMS_URL") or "").strip().strip('"').strip("'").rstrip("/")
+    if raw:
+        try:
+            parsed = urlparse(raw if "://" in raw else f"https://{raw}")
+            if parsed.scheme in ("http", "https") and (
+                parsed.hostname in ALLOWED_CMS_HOSTS
+                or (parsed.hostname and parsed.hostname.endswith(".csclub.org.au"))
+            ):
+                base = f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip("/")
+                return base if base.endswith("/api") else f"{base}/api"
+        except Exception:
+            pass
+    return "https://cms.csclub.org.au/api"
+
+
+BASE_CMS_URL = _get_safe_base_cms_url()
+CACHE_TTL = 300  # 5 minutes
 
 EVENTS_ENDPOINT = "events"
 COMMITTEE_ENDPOINT = "committee-members"
 PROJECTS_ENDPOINT = "projects"
 SPONSORS_ENDPOINT = "sponsors"
 COMMON_EVENTS_ENDPOINT = "common-events"
+
+ALLOWED_ENDPOINTS = {
+    EVENTS_ENDPOINT,
+    COMMITTEE_ENDPOINT,
+    PROJECTS_ENDPOINT,
+    SPONSORS_ENDPOINT,
+    COMMON_EVENTS_ENDPOINT,
+}
 
 _memory_cache = {}
 _cache_times = {}
@@ -28,13 +53,17 @@ def _fetch_from_cms(
     endpoint: str, params: Dict[str, Any] | None = None, timeout: int = 50
 ) -> Optional[Dict[str, Any]]:
     """Fetch raw JSON data from the CMS API endpoint with optional query params."""
+    clean_endpoint = endpoint.lstrip("/")
+    if clean_endpoint not in ALLOWED_ENDPOINTS:
+        return None
+
     req_params = dict(params or {})
     if "limit" not in req_params:
         req_params["limit"] = 500
 
     urls_to_try = [
-        f"{BASE_CMS_URL}/{endpoint.lstrip('/')}",
-        f"https://cms.csclub.org.au/api/{endpoint.lstrip('/')}",
+        f"{BASE_CMS_URL}/{clean_endpoint}",
+        f"https://cms.csclub.org.au/api/{clean_endpoint}",
     ]
     seen = set()
     headers = {"User-Agent": "DuckBot/1.0 (CS Club Adelaide)"}
@@ -50,10 +79,12 @@ def _fetch_from_cms(
             if resp.status_code == 200:
                 return resp.json()
             logging.error(
-                f"CMS request to {url} failed with status {resp.status_code}: {resp.text[:200]}"
+                "CMS request to %s failed with status %d",
+                clean_endpoint,
+                resp.status_code,
             )
         except Exception:
-            logging.exception(f"Exception fetching from CMS URL {url}")
+            logging.exception("Exception fetching from CMS endpoint %s", clean_endpoint)
 
     return None
 
