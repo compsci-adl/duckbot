@@ -92,5 +92,6 @@ jobs:
             echo REQUESTS_PER_MINUTE=${{ secrets.REQUESTS_PER_MINUTE }} >> .env
             echo CMS_URL=${{ secrets.CMS_URL }} >> .env
             docker load -i duckbot.tar.gz
-            docker compose up -d
+            docker compose down || true
+            docker compose up -d --force-recreate
           '
