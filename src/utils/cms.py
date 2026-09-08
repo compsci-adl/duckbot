@@ -13,6 +13,7 @@ if not _raw_cms_url:
     _raw_cms_url = "https://cms.csclub.org.au"
 BASE_CMS_URL = _raw_cms_url if _raw_cms_url.endswith("/api") else f"{_raw_cms_url}/api"
 CACHE_TTL = 600  # 10 minutes
+CMS_USER_AGENT = "Uptimeflare"
 
 EVENTS_ENDPOINT = "events"
 COMMITTEE_ENDPOINT = "committee-members"
@@ -38,10 +39,8 @@ def _fetch_from_cms(
             params = dict(params)
             params["limit"] = 500
 
-        if params:
-            resp = requests.get(url, params=params, timeout=timeout)
-        else:
-            resp = requests.get(url, timeout=timeout)
+        headers = {"User-Agent": CMS_USER_AGENT}
+        resp = requests.get(url, params=params, headers=headers, timeout=timeout)
         if resp.status_code == 200:
             return resp.json()
         logging.error(
