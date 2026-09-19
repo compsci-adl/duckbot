@@ -11,6 +11,7 @@ from utils import cms_helpers
 _raw_cms_url = (os.getenv("CMS_URL") or "").strip().strip('"').strip("'").rstrip("/")
 if not _raw_cms_url:
     _raw_cms_url = "https://cms.csclub.org.au"
+RAW_CMS_URL = _raw_cms_url
 BASE_CMS_URL = _raw_cms_url if _raw_cms_url.endswith("/api") else f"{_raw_cms_url}/api"
 CACHE_TTL = 600  # 10 minutes
 CMS_USER_AGENT = "Uptimeflare"
@@ -89,6 +90,46 @@ def _parse_iso(dt_str: str) -> Optional[datetime]:
 def get_cached_events(force: bool = False) -> Optional[Dict[str, Any]]:
     """Return cached events data from CMS, fetching if needed."""
     return _get_cached(EVENTS_ENDPOINT, params=None, cache_key="events", force=force)
+
+
+def get_all_events(force: bool = False) -> List[Dict[str, Any]]:
+    """Return all raw events docs from CMS."""
+    data = get_cached_events(force=force)
+    return data.get("docs", []) if data else []
+
+
+def get_cached_common_events(force: bool = False) -> Optional[Dict[str, Any]]:
+    """Return cached common events data from CMS, fetching if needed."""
+    return _get_cached(
+        COMMON_EVENTS_ENDPOINT,
+        params={"limit": 500},
+        cache_key="common_events",
+        force=force,
+    )
+
+
+def get_common_events(force: bool = False) -> List[Dict[str, Any]]:
+    """Return all common events docs from CMS."""
+    data = get_cached_common_events(force=force)
+    return data.get("docs", []) if data else []
+
+
+def fetch_image_bytes(image_url: str, timeout: int = 20) -> Optional[bytes]:
+    """Download image bytes from CMS or full URL."""
+    if not image_url:
+        return None
+    url = image_url.strip()
+    if url.startswith("/"):
+        url = f"{RAW_CMS_URL}{url}"
+    try:
+        headers = {"User-Agent": CMS_USER_AGENT}
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        if resp.status_code == 200 and resp.content:
+            return resp.content
+        logging.warning(f"Failed to fetch image from {url}: status {resp.status_code}")
+    except Exception:
+        logging.exception(f"Exception fetching image from {url}")
+    return None
 
 
 def get_fng_food_dates(force: bool = False) -> List[datetime]:

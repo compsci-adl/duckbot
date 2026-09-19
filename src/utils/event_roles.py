@@ -4,8 +4,9 @@ from discord.enums import EventStatus
 
 
 def get_event_role_name(event_name: str) -> str:
-    """Return the role name for a given event."""
-    return f"Event: {event_name}"
+    """Return the role name for a given event, clamped to Discord's 100 character limit."""
+    name = f"Event: {event_name.strip()}"
+    return name[:100]
 
 
 class EventRoleManager:
@@ -66,14 +67,46 @@ class EventRoleManager:
                 logging.error(f"Failed to remove event notification role: {e}")
 
     async def on_scheduled_event_update(self, before, after):
-        """Deletes the notification role (per event) after the event ends or is cancelled."""
+        """Handles event updates: renames roles if event is renamed, and deletes roles when all instances end."""
+        guild = self.bot.get_guild(after.guild_id)
+        if not guild:
+            return
+
+        # If event was renamed, rename the corresponding notification role
+        if before.name != after.name:
+            old_role_name = get_event_role_name(before.name)
+            new_role_name = get_event_role_name(after.name)
+            role = next((r for r in guild.roles if r.name == old_role_name), None)
+            if role:
+                try:
+                    await role.edit(
+                        name=new_role_name,
+                        reason=f"Event renamed from '{before.name}' to '{after.name}'",
+                    )
+                    logging.info(
+                        f"Renamed event notification role '{old_role_name}' to '{new_role_name}'"
+                    )
+                except Exception as e:
+                    logging.error(f"Failed to rename event notification role: {e}")
+
+        # Deletes the notification role after the event ends or is cancelled,
+        # unless there are other scheduled or active instances with the same name.
         if before.status != after.status and after.status in (
             EventStatus.completed,
             EventStatus.cancelled,
         ):
-            guild = self.bot.get_guild(after.guild_id)
-            if not guild:
+            has_active_sibling = any(
+                ev.id != after.id
+                and ev.name == after.name
+                and ev.status not in (EventStatus.completed, EventStatus.cancelled)
+                for ev in guild.scheduled_events
+            )
+            if has_active_sibling:
+                logging.info(
+                    f"Preserving event notification role for '{after.name}' as other scheduled instances remain."
+                )
                 return
+
             role_name = get_event_role_name(after.name)
             role = next((r for r in guild.roles if r.name == role_name), None)
             if not role:
