@@ -131,6 +131,33 @@ class DuckBot(commands.Bot):
         except Exception:
             logging.exception("Failed to start initial event sync task")
 
+        # Clean up any stale guild-level commands that cause duplicate slash commands
+        try:
+            self.loop.create_task(self._cleanup_stale_guild_commands())
+        except Exception:
+            logging.exception("Failed to start guild command cleanup task")
+
+    async def _cleanup_stale_guild_commands(self):
+        """Clear any obsolete guild-level commands that cause duplicate slash commands."""
+        await asyncio.sleep(5)
+        for guild in self.guilds:
+            try:
+                guild_cmds = await self.tree.fetch_commands(guild=guild)
+                if guild_cmds:
+                    logging.info(
+                        f"Found {len(guild_cmds)} stale guild commands in '{guild.name}' ({guild.id}); "
+                        "clearing them to prevent duplicate slash commands."
+                    )
+                    self.tree.clear_commands(guild=guild)
+                    await self.tree.sync(guild=guild)
+                    logging.info(
+                        f"Successfully cleared stale guild commands for '{guild.name}'."
+                    )
+            except Exception as e:
+                logging.warning(
+                    f"Could not check/clear guild commands for '{guild.name}' ({guild.id}): {e}"
+                )
+
     # Override on_message method with correct parameters
     async def on_message(self, message):
         pass
