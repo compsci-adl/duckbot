@@ -95,8 +95,66 @@ class AdminCommands(app_commands.Group):
             name="Skullboard Channel ID", value=f"`{channel_id}`", inline=False
         )
         embed.add_field(name="Required Reactions", value=f"`{required}`", inline=False)
+        event_sync_status = (
+            "Enabled"
+            if guild_id and self.settings_db.is_event_sync_enabled(str(guild_id))
+            else "Disabled (Default)"
+        )
+        embed.add_field(
+            name="Event Sync Status", value=f"`{event_sync_status}`", inline=False
+        )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(
+        name="sync-events",
+        description="Sync upcoming events from CS Club CMS to Discord Scheduled Events.",
+    )
+    @require_admin(require_guild=True)
+    async def sync_events(self, interaction: Interaction):
+        """Manually trigger CMS events synchronization for this guild."""
+        await interaction.response.defer(ephemeral=True)
+
+        guild_id_str = str(interaction.guild.id)
+        if not self.settings_db.is_event_sync_enabled(guild_id_str):
+            await interaction.followup.send(
+                "⚠️ Event synchronization is **disabled** for this server.\n"
+                "To enable it, run `/admin set event-sync enabled:True`.",
+                ephemeral=True,
+            )
+            return
+
+        syncer = getattr(interaction.client, "event_sync_manager", None)
+        if not syncer:
+            await interaction.followup.send(
+                "Event synchronization manager is not initialised on the bot.",
+                ephemeral=True,
+            )
+            return
+
+        result = await syncer.sync_guild_events(interaction.guild, force_cms=True)
+
+        embed = Embed(
+            title="CMS Event Sync",
+            color=Color.green() if not result.errors else Color.orange(),
+        )
+        embed.add_field(name="Created", value=str(result.created), inline=True)
+        embed.add_field(name="Updated", value=str(result.updated), inline=True)
+        embed.add_field(name="Unchanged", value=str(result.unchanged), inline=True)
+        embed.add_field(name="Cancelled", value=str(result.cancelled), inline=True)
+        embed.add_field(name="Cleared (Passed)", value=str(result.cleared), inline=True)
+
+        if result.details:
+            details_text = "\n".join(f"- {d}" for d in result.details[:15])
+            if len(result.details) > 15:
+                details_text += f"\n... and {len(result.details) - 15} more"
+            embed.add_field(name="Activity", value=details_text[:1024], inline=False)
+
+        if result.errors:
+            errors_text = "\n".join(f"- {e}" for e in result.errors[:5])
+            embed.add_field(name="Errors", value=errors_text[:1024], inline=False)
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 class SetSubGroup(app_commands.Group):
@@ -134,6 +192,20 @@ class SetSubGroup(app_commands.Group):
         self.settings_db.set_server_settings(guild_id, channel_id, reactions)
         await interaction.response.send_message(
             f"Required reactions set to {reactions} for this server.", ephemeral=True
+        )
+
+    @app_commands.command(
+        name="event-sync",
+        description="Enable or disable CMS event synchronization for this server.",
+    )
+    @require_admin(require_guild=True)
+    async def set_event_sync(self, interaction: Interaction, enabled: bool):
+        guild_id = str(interaction.guild.id)
+        self.settings_db.set_event_sync_enabled(guild_id, enabled)
+        status = "enabled" if enabled else "disabled"
+        await interaction.response.send_message(
+            f"CMS event synchronization has been **{status}** for this server.",
+            ephemeral=True,
         )
 
     @app_commands.command(

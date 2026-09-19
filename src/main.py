@@ -22,6 +22,7 @@ from constants.colours import LIGHT_YELLOW
 from models.databases.admin_settings_db import AdminSettingsDB
 from utils import spam_detection, time
 from utils.event_roles import EventRoleManager
+from utils.event_sync import EventSyncManager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,6 +41,7 @@ intents.messages = True
 intents.message_content = True
 intents.reactions = True
 intents.members = True
+intents.guild_scheduled_events = True
 
 
 class DuckBot(commands.Bot):
@@ -63,6 +65,7 @@ class DuckBot(commands.Bot):
         )  # Initialise SkullboardManager
         self.event_role_manager = EventRoleManager(self)  # Initialise EventRoleManager
         self.admin_db = AdminSettingsDB()
+        self.event_sync_manager = EventSyncManager(self, db=self.admin_db)
         self.prev_day = None
         self.expiry_loop = None
         self.reactor_scan_done = False
@@ -107,6 +110,7 @@ class DuckBot(commands.Bot):
             await self.tree.sync()
             self.synced = True
         self.loop.create_task(self.run_expiry_loop())
+        self.event_sync_manager.start_sync_loop(interval_minutes=60)
         self.add_view(ticketing.TicketPanel())
 
     async def on_ready(self):
@@ -118,6 +122,14 @@ class DuckBot(commands.Bot):
                 self.reactor_scan_done = True
             except Exception:
                 logging.exception("Failed to start reactor rebuild task")
+
+        # Kick off initial CMS event sync
+        try:
+            self.loop.create_task(
+                self.event_sync_manager.sync_all_guilds(force_cms=True)
+            )
+        except Exception:
+            logging.exception("Failed to start initial event sync task")
 
     # Override on_message method with correct parameters
     async def on_message(self, message):
@@ -218,7 +230,10 @@ class DuckBot(commands.Bot):
             curr = time.get_current_day()
             if self.prev_day != curr:
                 await self.skullboard_manager.db.expire()
-                logging.info(f"Expired old data {curr}")
+                cleared_events = self.event_sync_manager.clear_passed_events()
+                logging.info(
+                    f"Expired old data {curr}; cleared {cleared_events} passed events from DB"
+                )
                 self.prev_day = curr
             await asyncio.sleep(60)  # Wait 1 minute
 
