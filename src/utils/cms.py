@@ -147,7 +147,12 @@ def get_fng_food_dates(force: bool = False) -> List[datetime]:
     dates = []
     for doc in docs:
         name = (doc.get("name") or "").lower()
-        if "friday night games" in name and "food" in name:
+        desc = (doc.get("description") or "").lower()
+        if (
+            ("friday" in name and "game" in name)
+            or ("fng" in name)
+            or ("friday night games" in desc)
+        ):
             for u in doc.get("upcomingDates", []):
                 dt = _parse_iso(u.get("date"))
                 if dt:
