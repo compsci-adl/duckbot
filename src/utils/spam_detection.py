@@ -11,8 +11,14 @@ from models.databases.admin_settings_db import AdminSettingsDB
 
 # Load environment variables from .env file
 load_dotenv()
-CMS_URL = os.getenv("CMS_URL")
-KNOWN_SPAM_MESSAGES_URL = f"{CMS_URL}/api/known-spam-messages?limit=500"
+CMS_URL = (os.getenv("CMS_URL") or "").strip().strip('"').strip("'").rstrip("/")
+if not CMS_URL:
+    CMS_URL = "https://cms.csclub.org.au"
+KNOWN_SPAM_MESSAGES_URL = (
+    f"{CMS_URL}/known-spam-messages?limit=500"
+    if CMS_URL.endswith("/api")
+    else f"{CMS_URL}/api/known-spam-messages?limit=500"
+)
 
 
 async def fetch_spam_messages():
@@ -34,7 +40,8 @@ async def fetch_spam_messages():
             if (now - cache_time).total_seconds() < 86400:
                 return cached
     try:
-        async with aiohttp.ClientSession() as session:
+        headers = {"User-Agent": "Uptimeflare"}
+        async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(KNOWN_SPAM_MESSAGES_URL) as resp:
                 if resp.status == 200:
                     data = await resp.json()

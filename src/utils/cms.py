@@ -1,3 +1,5 @@
+import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
@@ -6,8 +8,13 @@ import requests
 
 from utils import cms_helpers
 
-BASE_CMS_URL = "https://cms.csclub.org.au/api"
-CACHE_TTL = 86400  # 1 day
+_raw_cms_url = (os.getenv("CMS_URL") or "").strip().strip('"').strip("'").rstrip("/")
+if not _raw_cms_url:
+    _raw_cms_url = "https://cms.csclub.org.au"
+RAW_CMS_URL = _raw_cms_url
+BASE_CMS_URL = _raw_cms_url if _raw_cms_url.endswith("/api") else f"{_raw_cms_url}/api"
+CACHE_TTL = 600  # 10 minutes
+CMS_USER_AGENT = "Uptimeflare"
 
 EVENTS_ENDPOINT = "events"
 COMMITTEE_ENDPOINT = "committee-members"
@@ -33,13 +40,15 @@ def _fetch_from_cms(
             params = dict(params)
             params["limit"] = 500
 
-        if params:
-            resp = requests.get(url, params=params, timeout=timeout)
-        else:
-            resp = requests.get(url, timeout=timeout)
+        headers = {"User-Agent": CMS_USER_AGENT}
+        resp = requests.get(url, params=params, headers=headers, timeout=timeout)
         if resp.status_code == 200:
             return resp.json()
+        logging.error(
+            f"CMS request to {url} failed with status {resp.status_code}: {resp.text[:200]}"
+        )
     except Exception:
+        logging.exception(f"Exception fetching from CMS URL {url}")
         return None
     return None
 
@@ -83,8 +92,48 @@ def get_cached_events(force: bool = False) -> Optional[Dict[str, Any]]:
     return _get_cached(EVENTS_ENDPOINT, params=None, cache_key="events", force=force)
 
 
+def get_all_events(force: bool = False) -> List[Dict[str, Any]]:
+    """Return all raw events docs from CMS."""
+    data = get_cached_events(force=force)
+    return data.get("docs", []) if data else []
+
+
+def get_cached_common_events(force: bool = False) -> Optional[Dict[str, Any]]:
+    """Return cached common events data from CMS, fetching if needed."""
+    return _get_cached(
+        COMMON_EVENTS_ENDPOINT,
+        params={"limit": 500},
+        cache_key="common_events",
+        force=force,
+    )
+
+
+def get_common_events(force: bool = False) -> List[Dict[str, Any]]:
+    """Return all common events docs from CMS."""
+    data = get_cached_common_events(force=force)
+    return data.get("docs", []) if data else []
+
+
+def fetch_image_bytes(image_url: str, timeout: int = 20) -> Optional[bytes]:
+    """Download image bytes from CMS or full URL."""
+    if not image_url:
+        return None
+    url = image_url.strip()
+    if url.startswith("/"):
+        url = f"{RAW_CMS_URL}{url}"
+    try:
+        headers = {"User-Agent": CMS_USER_AGENT}
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        if resp.status_code == 200 and resp.content:
+            return resp.content
+        logging.warning(f"Failed to fetch image from {url}: status {resp.status_code}")
+    except Exception:
+        logging.exception(f"Exception fetching image from {url}")
+    return None
+
+
 def get_fng_food_dates(force: bool = False) -> List[datetime]:
-    """Return a list of upcoming Friday Night Games with Food dates from CMS"""
+    """Return a list of upcoming Friday Night Games with Food dates from CMS, normalised to 5pm Adelaide time."""
     data = _get_cached(
         COMMON_EVENTS_ENDPOINT,
         params={"limit": 500},
@@ -94,20 +143,33 @@ def get_fng_food_dates(force: bool = False) -> List[datetime]:
     if not data:
         return []
     docs = data.get("docs", [])
+    adelaide_tz = ZoneInfo("Australia/Adelaide")
     dates = []
     for doc in docs:
-        if "Friday Night Games with Food" in doc.get("name", ""):
-            upcoming = doc.get("upcomingDates", [])
-            for u in upcoming:
-                date_str = u.get("date")
-                dt = _parse_iso(date_str)
+        name = (doc.get("name") or "").lower()
+        desc = (doc.get("description") or "").lower()
+        if (
+            ("friday" in name and "game" in name)
+            or ("fng" in name)
+            or ("friday night games" in desc)
+        ):
+            for u in doc.get("upcomingDates", []):
+                dt = _parse_iso(u.get("date"))
                 if dt:
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    dates.append(dt)
+                    d = dt if dt.tzinfo is None else dt.astimezone(adelaide_tz)
+                    dates.append(
+                        datetime(
+                            d.year,
+                            d.month,
+                            d.day,
+                            17,
+                            0,
+                            0,
+                            tzinfo=adelaide_tz,
+                        )
+                    )
             break
-    dates.sort(reverse=True)
-    return dates
+    return sorted(set(dates), reverse=True)
 
 
 def get_upcoming_events(limit: int = 50, force: bool = False) -> List[Dict[str, Any]]:
